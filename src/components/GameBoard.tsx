@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DndContext, type DragEndEvent } from '@dnd-kit/core'
+import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { useGameEngine } from '../hooks/useGameEngine'
 import { BoardZone } from './BoardZone'
 import { PlayerHand } from './PlayerHand'
@@ -10,11 +10,14 @@ import { isSwapCard } from '../engine/CardInstance'
 export function GameBoard() {
   const { game, playCard, swap, attack, endTurn, restart } = useGameEngine()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
 
   const isPlayerTurn = game.phase === GamePhase.PlayerTurn
-  const isGameOver   = game.phase === GamePhase.GameOver
+  const isGameOver = game.phase === GamePhase.GameOver
 
   function handleDragEnd(event: DragEndEvent) {
+    setActiveDragId(null)
+
     const { active, over } = event
     if (!over || over.id !== 'player-board') return
 
@@ -29,6 +32,14 @@ export function GameBoard() {
     }
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragId(event.active.id as string)
+  }
+
+  function handleDragCancel() {
+    setActiveDragId(null)
+  }
+
   function handleBoardClick(instanceId: string) {
     if (!isPlayerTurn) return
     setSelectedId(prev => prev === instanceId ? null : instanceId)
@@ -41,156 +52,147 @@ export function GameBoard() {
   }
 
   const statusColor = isGameOver ? '#ff3d3d' : isPlayerTurn ? '#00e5ff' : '#ff0060'
-  const statusText  = isGameOver
+  const statusText = isGameOver
     ? game.result.status.replace('_', '/').toUpperCase()
     : isPlayerTurn ? 'PLAYER_TURN' : 'AI_PROC...'
 
+  const strikeReady = !!selectedId && isPlayerTurn
+  const activeDraggedCard = activeDragId
+    ? game.player.hand.find(c => c.instanceId === activeDragId)
+    : undefined
+
   return (
-    <DndContext onDragEnd={handleDragEnd}>
-      <div style={{
-        minHeight: '100vh',
-        /* subtle grid bg */
-        background: `
-          linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px),
-          #050508
-        `,
-        backgroundSize: '40px 40px',
-        color: '#c0c0e0',
-        fontFamily: "'Share Tech Mono', 'Courier New', monospace",
-        padding: '16px 20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        maxWidth: '960px',
-        margin: '0 auto',
-      }}>
+    <div className="mx-auto grid h-screen w-full max-w-[1820px] grid-cols-1 gap-3 overflow-hidden px-3 py-3 sm:px-4 sm:py-4 xl:grid-cols-[240px_minmax(0,1fr)_240px] xl:gap-4">
+      <aside className="anim-boot hidden min-h-0 flex-col rounded-sm border border-[#1c1c3a] bg-[#07070e] p-3 xl:flex">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border border-[#1c1c3a] px-3 py-2.5">
+          <div className="absolute left-[-1px] top-[-1px] h-2 w-2 border-l-2 border-t-2 border-[#36366a]" />
+          <div className="absolute bottom-[-1px] right-[-1px] h-2 w-2 border-b-2 border-r-2 border-[#36366a]" />
 
-        {/* ── Header ── */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: '1px solid #1c1c3a',
-          paddingBottom: '12px',
-        }}>
-          <div className="glitch" style={{
-            fontSize: '22px',
-            fontWeight: 'bold',
-            color: '#00e5ff',
-            letterSpacing: '6px',
-          }}>
-            CYBER/DECK
+          <div className="mb-2 text-[9px] uppercase tracking-[0.3em] text-[#36366a]">COMBAT.LOG //</div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {[...game.log].reverse().map((entry, i) => (
+              <div
+                key={i}
+                className={`anim-log-reveal mb-0.5 text-[10px] tracking-[0.3px] ${i === 0 ? 'text-[#8080c0]' : 'text-[#2e2e5a]'}`}
+                style={{ animationDelay: `${i * 35}ms` }}
+              >
+                <span className="text-[#22224a]">&gt; </span>
+                {entry.message}
+              </div>
+            ))}
+
+            {game.log.length === 0 && <div className="text-[10px] tracking-[0.2em] text-[#1e1e3a]">-- AWAITING_DATA --</div>}
           </div>
+        </div>
+      </aside>
 
-          <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-            <span style={{ fontSize: '10px', color: '#36366a', letterSpacing: '3px' }}>
-              TURN.{String(game.turn).padStart(2, '0')}
-            </span>
+      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+        <div className="anim-boot min-h-0 w-full rounded-sm border border-[#1c1c3a] bg-[#050508] bg-[linear-gradient(rgba(0,229,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(0,229,255,0.025)_1px,transparent_1px)] bg-[size:40px_40px] p-3 transition-colors duration-300 sm:p-4 lg:px-5">
+          <div className="flex h-full min-h-0 flex-col gap-1.5 overflow-hidden xl:gap-1">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#1c1c3a] pb-3">
+              <div className="glitch text-[22px] font-bold tracking-[0.38em] text-[#00e5ff]">
+                CYBER/DECK
+              </div>
 
-            <div style={{
-              padding: '4px 16px',
-              fontSize: '11px',
-              letterSpacing: '2px',
-              color: statusColor,
-              border: `1px solid ${statusColor}`,
-              boxShadow: `0 0 10px ${statusColor}44`,
-              clipPath: 'polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}>
-              <span className="blink" style={{ fontSize: '8px' }}>■</span>
-              {statusText}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] tracking-[0.3em] text-[#36366a]">
+                  TURN.{String(game.turn).padStart(2, '0')}
+                </span>
+
+                <div
+                  className={`flex items-center gap-1.5 px-4 py-1 text-[11px] tracking-[0.2em] [clip-path:polygon(8px_0%,100%_0%,calc(100%-8px)_100%,0%_100%)] ${isPlayerTurn ? 'anim-neon-pulse' : ''}`}
+                  style={{
+                    color: statusColor,
+                    border: `1px solid ${statusColor}`,
+                    boxShadow: `0 0 10px ${statusColor}44`,
+                  }}
+                >
+                  <span className="blink text-[8px]">■</span>
+                  {statusText}
+                </div>
+              </div>
+            </div>
+
+            {/* Champions */}
+            <div className="anim-boot flex justify-end gap-3 [animation-delay:80ms]">
+              <div className="text-right">
+                <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#ff006055]">
+                  ENEMY.CHAMPION
+                </div>
+                <div className="origin-top-right scale-[0.9] xl:scale-[0.86]">
+                  <CardComponent card={game.enemy.champion} />
+                </div>
+              </div>
+            </div>
+
+            {/* Enemy field */}
+            <div className="anim-boot [animation-delay:120ms]">
+              <BoardZone
+                id="enemy-board"
+                label="ENEMY.FIELD"
+                cards={game.enemy.board}
+                attackable={strikeReady}
+              />
+            </div>
+
+            {/* Battle line */}
+            <div className="relative border-t border-dashed border-[#1c1c3a]">
+              <span className="absolute left-1/2 top-[-8px] -translate-x-1/2 bg-[#050508] px-3 text-[9px] tracking-[0.35em] text-[#2a2a5a]">
+                BATTLE.LINE
+              </span>
+            </div>
+
+            {/* Player field */}
+            <div className="anim-boot [animation-delay:170ms]">
+              <BoardZone
+                id="player-board"
+                label="ALLY.FIELD"
+                cards={game.player.board}
+                onCardClick={handleBoardClick}
+                selectedId={selectedId}
+                highlight={isPlayerTurn}
+              />
+            </div>
+
+            {/* Hand */}
+            <div className="anim-boot flex flex-col gap-1.5 [animation-delay:220ms] xl:gap-1">
+              <PlayerHand cards={game.player.hand} disabled={!isPlayerTurn} />
             </div>
           </div>
         </div>
 
-        {/* ── Champions ── */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '12px',
-        }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '9px', letterSpacing: '3px', color: '#ff006055', marginBottom: '6px' }}>
-              ENEMY.CHAMPION
-            </div>
-            <CardComponent card={game.enemy.champion} />
-          </div>
+        <DragOverlay zIndex={12000}>
+          {activeDraggedCard ? <CardComponent card={activeDraggedCard} /> : null}
+        </DragOverlay>
+      </DndContext>
+
+      <aside className="anim-boot hidden min-h-0 flex-col rounded-sm border border-[#1c1c3a] bg-[#07070e] p-3 [animation-delay:320ms] xl:flex">
+        <div className="mb-3">
+          <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#00e5ff55]">ALLY.CHAMPION</div>
+          <CardComponent card={game.player.champion} />
         </div>
 
-        {/* ── Enemy field ── */}
-        <BoardZone
-          id="enemy-board"
-          label="ENEMY.FIELD"
-          cards={game.enemy.board}
-          attackable={!!selectedId && isPlayerTurn}
-        />
-
-        {/* ── Battle line ── */}
-        <div style={{ position: 'relative', borderTop: '1px dashed #1c1c3a' }}>
-          <span style={{
-            position: 'absolute', top: '-8px', left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#050508',
-            padding: '0 12px',
-            fontSize: '9px',
-            color: '#2a2a5a',
-            letterSpacing: '4px',
-          }}>BATTLE.LINE</span>
-        </div>
-
-        {/* ── Player field ── */}
-        <BoardZone
-          id="player-board"
-          label="ALLY.FIELD"
-          cards={game.player.board}
-          onCardClick={handleBoardClick}
-          selectedId={selectedId}
-          highlight={isPlayerTurn}
-        />
-
-        {/* ── Hand ── */}
-        <div>
-          <PlayerHand
-            cards={game.player.hand}
-            disabled={!isPlayerTurn}
-          />
-          <div>
-            <div style={{ fontSize: '9px', letterSpacing: '3px', color: '#00e5ff55', marginBottom: '6px' }}>
-              ALLY.CHAMPION
-            </div>
-            <CardComponent card={game.player.champion} />
-          </div>
-        </div>
-
-        {/* ── Action buttons ── */}
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="flex flex-col gap-2.5 border-t border-[#1c1c3a] pt-3">
           <button
-            className="cy-btn"
             onClick={handleAttack}
-            disabled={!selectedId || !isPlayerTurn}
+            disabled={!strikeReady}
+            className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3d3d]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
             style={{
-              padding: '10px 22px',
-              fontSize: '11px',
-              letterSpacing: '2px',
-              color: selectedId && isPlayerTurn ? '#ff3d3d' : '#2a2a5a',
-              border: `1px solid ${selectedId && isPlayerTurn ? '#ff3d3d' : '#1c1c3a'}`,
-              boxShadow: selectedId && isPlayerTurn ? '0 0 10px rgba(255,61,61,0.35)' : 'none',
+              color: strikeReady ? '#ff3d3d' : '#2a2a5a',
+              border: `1px solid ${strikeReady ? '#ff3d3d' : '#1c1c3a'}`,
+              boxShadow: strikeReady ? '0 0 10px rgba(255,61,61,0.35)' : 'none',
             }}
           >
             [STRIKE]{selectedId ? ' // EXEC' : ' // IDLE'}
           </button>
 
           <button
-            className="cy-btn"
             onClick={endTurn}
             disabled={!isPlayerTurn}
+            className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#00e5ff]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
             style={{
-              padding: '10px 22px',
-              fontSize: '11px',
-              letterSpacing: '2px',
               color: isPlayerTurn ? '#00e5ff' : '#2a2a5a',
               border: `1px solid ${isPlayerTurn ? '#00e5ff' : '#1c1c3a'}`,
               boxShadow: isPlayerTurn ? '0 0 10px rgba(0,229,255,0.35)' : 'none',
@@ -201,13 +203,9 @@ export function GameBoard() {
 
           {isGameOver && (
             <button
-              className="cy-btn"
               onClick={restart}
+              className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#ffe000] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ffe000]/70"
               style={{
-                padding: '10px 22px',
-                fontSize: '11px',
-                letterSpacing: '2px',
-                color: '#ffe000',
                 border: '1px solid #ffe000',
                 boxShadow: '0 0 10px rgba(255,224,0,0.3)',
               }}
@@ -217,63 +215,49 @@ export function GameBoard() {
           )}
         </div>
 
-        {/* ── Combat log ── */}
-        <div style={{
-          border: '1px solid #1c1c3a',
-          borderRadius: '1px',
-          padding: '10px 12px',
-          maxHeight: '130px',
-          overflowY: 'auto',
-          background: '#07070e',
-          position: 'relative',
-        }}>
-          <div style={{ position: 'absolute', top: -1, left: -1, width: 8, height: 8,
-            borderTop: '2px solid #36366a', borderLeft: '2px solid #36366a' }} />
-          <div style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8,
-            borderBottom: '2px solid #36366a', borderRight: '2px solid #36366a' }} />
-
-          <div style={{
-            fontSize: '9px', letterSpacing: '3px', color: '#36366a',
-            marginBottom: '8px', textTransform: 'uppercase',
-          }}>
-            COMBAT.LOG //
-          </div>
-
-          {[...game.log].reverse().map((entry, i) => (
-            <div key={i} style={{
-              fontSize: '10px',
-              color: i === 0 ? '#8080c0' : '#2e2e5a',
-              marginBottom: '2px',
-              letterSpacing: '0.3px',
-            }}>
-              <span style={{ color: '#22224a' }}>&gt; </span>
-              {entry.message}
-            </div>
-          ))}
-
-          {game.log.length === 0 && (
-            <div style={{ color: '#1e1e3a', fontSize: '10px', letterSpacing: '2px' }}>
-              -- AWAITING_DATA --
-            </div>
-          )}
-        </div>
-
-        {/* ── System footer ── */}
-        <div style={{
-          display: 'flex',
-          gap: '20px',
-          fontSize: '9px',
-          color: '#2a2a5a',
-          letterSpacing: '1px',
-          borderTop: '1px solid #1c1c3a',
-          paddingTop: '8px',
-        }}>
+        <div className="mt-auto flex flex-col gap-1 border-t border-[#1c1c3a] pt-3 text-[10px] tracking-[1px] text-[#2a2a5a]">
           <span>DECK_A:{game.player.activeDeck.length}</span>
           <span>DECK_B:{game.player.passiveDeck.length}</span>
           <span>DISC:{game.player.discard.length}</span>
         </div>
 
+        <div className="mt-3 rounded-sm border border-[#1c1c3a] px-2 py-1 text-[9px] tracking-[0.2em] text-[#36366a] xl:hidden">
+          COMBAT.LOG DISPONIBLE EN PAYSAGE
+        </div>
+      </aside>
+
+      <div className="anim-boot flex flex-col gap-2 rounded-sm border border-[#1c1c3a] bg-[#07070e] p-3 xl:hidden">
+        <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#00e5ff55]">ALLY.CHAMPION</div>
+        <CardComponent card={game.player.champion} />
+
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            onClick={handleAttack}
+            disabled={!strikeReady}
+            className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3d3d]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
+            style={{
+              color: strikeReady ? '#ff3d3d' : '#2a2a5a',
+              border: `1px solid ${strikeReady ? '#ff3d3d' : '#1c1c3a'}`,
+              boxShadow: strikeReady ? '0 0 10px rgba(255,61,61,0.35)' : 'none',
+            }}
+          >
+            [STRIKE]{selectedId ? ' // EXEC' : ' // IDLE'}
+          </button>
+
+          <button
+            onClick={endTurn}
+            disabled={!isPlayerTurn}
+            className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#00e5ff]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
+            style={{
+              color: isPlayerTurn ? '#00e5ff' : '#2a2a5a',
+              border: `1px solid ${isPlayerTurn ? '#00e5ff' : '#1c1c3a'}`,
+              boxShadow: isPlayerTurn ? '0 0 10px rgba(0,229,255,0.35)' : 'none',
+            }}
+          >
+            [END_TURN]
+          </button>
+        </div>
       </div>
-    </DndContext>
+    </div>
   )
 }
