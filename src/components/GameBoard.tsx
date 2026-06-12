@@ -109,30 +109,9 @@ export function GameBoard() {
         {/* ── Champions ── */}
         <div style={{
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
+          justifyContent: 'flex-end',
           gap: '12px',
         }}>
-          <div>
-            <div style={{ fontSize: '9px', letterSpacing: '3px', color: '#00e5ff55', marginBottom: '6px' }}>
-              ALLY.CHAMPION
-            </div>
-            <CardComponent card={game.player.champion} />
-          </div>
-
-          <div style={{ alignSelf: 'center', textAlign: 'center' }}>
-            <div style={{
-              fontSize: '20px',
-              color: '#ff0060',
-              letterSpacing: '4px',
-              textShadow: '0 0 12px #ff006099',
-              fontWeight: 'bold',
-            }}>VS</div>
-            <div style={{ fontSize: '9px', color: '#2a2a5a', marginTop: '6px', letterSpacing: '2px' }}>
-              {String(game.turn).padStart(2, '0')}/∞
-            </div>
-          </div>
-
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '9px', letterSpacing: '3px', color: '#ff006055', marginBottom: '6px' }}>
               ENEMY.CHAMPION
@@ -173,10 +152,18 @@ export function GameBoard() {
         />
 
         {/* ── Hand ── */}
-        <PlayerHand
-          cards={game.player.hand}
-          disabled={!isPlayerTurn}
-        />
+        <div>
+          <PlayerHand
+            cards={game.player.hand}
+            disabled={!isPlayerTurn}
+          />
+          <div>
+            <div style={{ fontSize: '9px', letterSpacing: '3px', color: '#00e5ff55', marginBottom: '6px' }}>
+              ALLY.CHAMPION
+            </div>
+            <CardComponent card={game.player.champion} />
+          </div>
+        </div>
 
         {/* ── Action buttons ── */}
         <div style={{ display: 'flex', gap: '10px' }}>
