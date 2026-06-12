@@ -40,157 +40,250 @@ export function GameBoard() {
     setSelectedId(null)
   }
 
+  const statusColor = isGameOver ? '#ff3d3d' : isPlayerTurn ? '#00e5ff' : '#ff0060'
+  const statusText  = isGameOver
+    ? game.result.status.replace('_', '/').toUpperCase()
+    : isPlayerTurn ? 'PLAYER_TURN' : 'AI_PROC...'
+
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div style={{
         minHeight: '100vh',
-        background: '#0f0f1a',
-        color: '#fff',
-        fontFamily: 'monospace',
-        padding: '20px',
+        /* subtle grid bg */
+        background: `
+          linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px),
+          #050508
+        `,
+        backgroundSize: '40px 40px',
+        color: '#c0c0e0',
+        fontFamily: "'Share Tech Mono', 'Courier New', monospace",
+        padding: '16px 20px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
-        maxWidth: '900px',
+        gap: '10px',
+        maxWidth: '960px',
         margin: '0 auto',
       }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '20px', fontWeight: 'bold' }}>🃏 Card Game</div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{ color: '#888', fontSize: '13px' }}>Turn {game.turn}</div>
+        {/* ── Header ── */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid #1c1c3a',
+          paddingBottom: '12px',
+        }}>
+          <div className="glitch" style={{
+            fontSize: '22px',
+            fontWeight: 'bold',
+            color: '#00e5ff',
+            letterSpacing: '6px',
+          }}>
+            CYBER/DECK
+          </div>
+
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+            <span style={{ fontSize: '10px', color: '#36366a', letterSpacing: '3px' }}>
+              TURN.{String(game.turn).padStart(2, '0')}
+            </span>
+
             <div style={{
-              padding: '4px 12px',
-              borderRadius: '20px',
-              fontSize: '12px',
-              background: isGameOver ? '#c0392b' : isPlayerTurn ? '#2ecc71' : '#e67e22',
-              color: '#fff',
+              padding: '4px 16px',
+              fontSize: '11px',
+              letterSpacing: '2px',
+              color: statusColor,
+              border: `1px solid ${statusColor}`,
+              boxShadow: `0 0 10px ${statusColor}44`,
+              clipPath: 'polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
             }}>
-              {isGameOver
-                ? game.result.status.replace('_', ' ').toUpperCase()
-                : isPlayerTurn ? 'YOUR TURN' : 'ENEMY TURN'}
+              <span className="blink" style={{ fontSize: '8px' }}>■</span>
+              {statusText}
             </div>
           </div>
         </div>
 
-        {/* Champions */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+        {/* ── Champions ── */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: '12px',
+        }}>
           <div>
-            <div style={{ color: '#888', fontSize: '11px', marginBottom: '4px' }}>YOUR CHAMPION</div>
+            <div style={{ fontSize: '9px', letterSpacing: '3px', color: '#00e5ff55', marginBottom: '6px' }}>
+              ALLY.CHAMPION
+            </div>
             <CardComponent card={game.player.champion} />
           </div>
-          <div style={{ color: '#888', fontSize: '12px', alignSelf: 'center' }}>VS</div>
-          <div>
-            <div style={{ color: '#888', fontSize: '11px', marginBottom: '4px' }}>ENEMY CHAMPION</div>
+
+          <div style={{ alignSelf: 'center', textAlign: 'center' }}>
+            <div style={{
+              fontSize: '20px',
+              color: '#ff0060',
+              letterSpacing: '4px',
+              textShadow: '0 0 12px #ff006099',
+              fontWeight: 'bold',
+            }}>VS</div>
+            <div style={{ fontSize: '9px', color: '#2a2a5a', marginTop: '6px', letterSpacing: '2px' }}>
+              {String(game.turn).padStart(2, '0')}/∞
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '9px', letterSpacing: '3px', color: '#ff006055', marginBottom: '6px' }}>
+              ENEMY.CHAMPION
+            </div>
             <CardComponent card={game.enemy.champion} />
           </div>
         </div>
 
-        {/* Enemy board */}
+        {/* ── Enemy field ── */}
         <BoardZone
           id="enemy-board"
-          label="Enemy Board"
+          label="ENEMY.FIELD"
           cards={game.enemy.board}
           attackable={!!selectedId && isPlayerTurn}
         />
 
-        {/* Player board */}
+        {/* ── Battle line ── */}
+        <div style={{ position: 'relative', borderTop: '1px dashed #1c1c3a' }}>
+          <span style={{
+            position: 'absolute', top: '-8px', left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#050508',
+            padding: '0 12px',
+            fontSize: '9px',
+            color: '#2a2a5a',
+            letterSpacing: '4px',
+          }}>BATTLE.LINE</span>
+        </div>
+
+        {/* ── Player field ── */}
         <BoardZone
           id="player-board"
-          label="Your Board — drop cards here to play them"
+          label="ALLY.FIELD"
           cards={game.player.board}
           onCardClick={handleBoardClick}
           selectedId={selectedId}
           highlight={isPlayerTurn}
         />
 
-        {/* Player hand */}
+        {/* ── Hand ── */}
         <PlayerHand
           cards={game.player.hand}
           disabled={!isPlayerTurn}
         />
 
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: '12px' }}>
+        {/* ── Action buttons ── */}
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button
+            className="cy-btn"
             onClick={handleAttack}
             disabled={!selectedId || !isPlayerTurn}
             style={{
-              padding: '10px 20px',
-              background: selectedId && isPlayerTurn ? '#e74c3c' : '#333',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: selectedId && isPlayerTurn ? 'pointer' : 'not-allowed',
-              fontFamily: 'monospace',
-              fontSize: '14px',
+              padding: '10px 22px',
+              fontSize: '11px',
+              letterSpacing: '2px',
+              color: selectedId && isPlayerTurn ? '#ff3d3d' : '#2a2a5a',
+              border: `1px solid ${selectedId && isPlayerTurn ? '#ff3d3d' : '#1c1c3a'}`,
+              boxShadow: selectedId && isPlayerTurn ? '0 0 10px rgba(255,61,61,0.35)' : 'none',
             }}
           >
-            ⚔️ {selectedId ? 'Attack with selected' : 'Select a card to attack'}
+            [STRIKE]{selectedId ? ' // EXEC' : ' // IDLE'}
           </button>
 
           <button
+            className="cy-btn"
             onClick={endTurn}
             disabled={!isPlayerTurn}
             style={{
-              padding: '10px 20px',
-              background: isPlayerTurn ? '#2ecc71' : '#333',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: isPlayerTurn ? 'pointer' : 'not-allowed',
-              fontFamily: 'monospace',
-              fontSize: '14px',
+              padding: '10px 22px',
+              fontSize: '11px',
+              letterSpacing: '2px',
+              color: isPlayerTurn ? '#00e5ff' : '#2a2a5a',
+              border: `1px solid ${isPlayerTurn ? '#00e5ff' : '#1c1c3a'}`,
+              boxShadow: isPlayerTurn ? '0 0 10px rgba(0,229,255,0.35)' : 'none',
             }}
           >
-            ✅ End Turn
+            [END_TURN]
           </button>
 
           {isGameOver && (
             <button
+              className="cy-btn"
               onClick={restart}
               style={{
-                padding: '10px 20px',
-                background: '#9b59b6',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontFamily: 'monospace',
-                fontSize: '14px',
+                padding: '10px 22px',
+                fontSize: '11px',
+                letterSpacing: '2px',
+                color: '#ffe000',
+                border: '1px solid #ffe000',
+                boxShadow: '0 0 10px rgba(255,224,0,0.3)',
               }}
             >
-              🔄 Restart
+              [REBOOT_SYS]
             </button>
           )}
         </div>
 
-        {/* Combat log */}
+        {/* ── Combat log ── */}
         <div style={{
-          border: '1px solid #333',
-          borderRadius: '8px',
-          padding: '12px',
-          maxHeight: '150px',
+          border: '1px solid #1c1c3a',
+          borderRadius: '1px',
+          padding: '10px 12px',
+          maxHeight: '130px',
           overflowY: 'auto',
-          background: 'rgba(0,0,0,0.3)',
+          background: '#07070e',
+          position: 'relative',
         }}>
-          <div style={{ color: '#888', fontSize: '11px', marginBottom: '8px' }}>COMBAT LOG</div>
+          <div style={{ position: 'absolute', top: -1, left: -1, width: 8, height: 8,
+            borderTop: '2px solid #36366a', borderLeft: '2px solid #36366a' }} />
+          <div style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8,
+            borderBottom: '2px solid #36366a', borderRight: '2px solid #36366a' }} />
+
+          <div style={{
+            fontSize: '9px', letterSpacing: '3px', color: '#36366a',
+            marginBottom: '8px', textTransform: 'uppercase',
+          }}>
+            COMBAT.LOG //
+          </div>
+
           {[...game.log].reverse().map((entry, i) => (
-            <div key={i} style={{ fontSize: '12px', color: '#aaa', marginBottom: '2px' }}>
+            <div key={i} style={{
+              fontSize: '10px',
+              color: i === 0 ? '#8080c0' : '#2e2e5a',
+              marginBottom: '2px',
+              letterSpacing: '0.3px',
+            }}>
+              <span style={{ color: '#22224a' }}>&gt; </span>
               {entry.message}
             </div>
           ))}
+
           {game.log.length === 0 && (
-            <div style={{ color: '#444', fontSize: '12px' }}>No events yet.</div>
+            <div style={{ color: '#1e1e3a', fontSize: '10px', letterSpacing: '2px' }}>
+              -- AWAITING_DATA --
+            </div>
           )}
         </div>
 
-        {/* Deck info */}
-        <div style={{ display: 'flex', gap: '20px', fontSize: '12px', color: '#666' }}>
-          <span>Active deck: {game.player.activeDeck.length} cards</span>
-          <span>Passive deck: {game.player.passiveDeck.length} cards</span>
-          <span>Discard: {game.player.discard.length} cards</span>
+        {/* ── System footer ── */}
+        <div style={{
+          display: 'flex',
+          gap: '20px',
+          fontSize: '9px',
+          color: '#2a2a5a',
+          letterSpacing: '1px',
+          borderTop: '1px solid #1c1c3a',
+          paddingTop: '8px',
+        }}>
+          <span>DECK_A:{game.player.activeDeck.length}</span>
+          <span>DECK_B:{game.player.passiveDeck.length}</span>
+          <span>DISC:{game.player.discard.length}</span>
         </div>
 
       </div>

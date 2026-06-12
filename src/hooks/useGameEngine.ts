@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { type GameState, createGameState, resolveAttack, getAttackTarget, endPlayerTurn, endEnemyTurn, cleanupBoard, GamePhase } from '../engine/GameEngine'
+import { type GameState, createGameState, resolveAttack, getAttackTarget, endPlayerTurn, endEnemyTurn, cleanupBoard } from '../engine/GameEngine'
 import { createPlayerState, playSwap, playCardToBoard } from '../engine/PlayerState'
 import { generateDeck, getChampion } from '../engine/CardDatabase'
 import { DeckColor } from '../engine/CardEnums'
