@@ -8,15 +8,34 @@ import { GamePhase } from '../engine/GameEngine'
 import { isSwapCard } from '../engine/CardInstance'
 
 export function GameBoard() {
-  const { game, playCard, swap, attack, endTurn, restart } = useGameEngine()
+  const { game, loading, error, playCard, swap, attack, endTurn, restart } = useGameEngine()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050508] font-mono text-[#00e5ff]">
+        <span className="blink text-sm tracking-[0.3em]">LOADING_DECK...</span>
+      </div>
+    )
+  }
+
+  if (error || !game) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050508] font-mono">
+        <div className="border border-[#ff3d3d] p-8 text-center text-sm tracking-[0.2em] text-[#ff3d3d]">
+          {error ?? 'NO_ACTIVE_DECK_FOUND'}
+        </div>
+      </div>
+    )
+  }
 
   const isPlayerTurn = game.phase === GamePhase.PlayerTurn
   const isGameOver = game.phase === GamePhase.GameOver
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveDragId(null)
+    if (!game) return
 
     const { active, over } = event
     if (!over || over.id !== 'player-board') return
@@ -93,7 +112,7 @@ export function GameBoard() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[#1c1c3a] pb-3">
               <div className="glitch text-[22px] font-bold tracking-[0.38em] text-[#00e5ff]">
-                CYBER/DECK
+                CYBER_DECK
               </div>
 
               <div className="flex items-center gap-3">

@@ -1,31 +1,64 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { type GameState, createGameState, resolveAttack, getAttackTarget, endPlayerTurn, endEnemyTurn, cleanupBoard } from '../engine/GameEngine'
 import { createPlayerState, playSwap, playCardToBoard } from '../engine/PlayerState'
-import { generateDeck, getChampion } from '../engine/CardDatabase'
+import { generateDeck, getChampion, getDeckActive, resolveDeckCard, type Deck } from '../engine/CardDatabase'
 import { DeckColor } from '../engine/CardEnums'
 import { runAITurn } from '../engine/AIPlayer'
+import { useAuth } from '../context/useAuth'
 
-function initGame(): GameState {
-  const player = createPlayerState(
-    'player',
-    generateDeck(DeckColor.Red),
-    generateDeck(DeckColor.Green),
-    getChampion(DeckColor.Red),
-  )
-  const enemy = createPlayerState(
+function toDeckColor(color: string): DeckColor {
+  const found = Object.values(DeckColor).find(v => v.toLowerCase() === color.toLowerCase())
+  return found ?? DeckColor.Red
+}
+
+function buildGameFromDecks(activeDecks: Deck[]): GameState {
+  const sourceA = activeDecks[0]?.cards ?? []
+  const sourceB = activeDecks[1]?.cards ?? sourceA
+
+  const isChampion = (c: Deck['cards'][number]) => c.type.toLowerCase() === 'champion'
+  const championPayload = sourceA.find(isChampion) ?? sourceB.find(isChampion)
+
+  const deckA = sourceA.filter(c => !isChampion(c)).map(resolveDeckCard)
+  const deckB = sourceB.filter(c => !isChampion(c)).map(resolveDeckCard)
+  const playerColor = toDeckColor(activeDecks[0]?.color ?? 'Red')
+  const playerChampion = championPayload ? resolveDeckCard(championPayload) : getChampion(playerColor)
+
+  const player = createPlayerState('player', deckA, deckB, playerChampion)
+  const enemy  = createPlayerState(
     'enemy',
     generateDeck(DeckColor.Blue),
-    generateDeck(DeckColor.Green),
+    generateDeck(DeckColor.Blue),
     getChampion(DeckColor.Blue),
   )
   return createGameState(player, enemy)
 }
 
 export function useGameEngine() {
-  const [game, setGame] = useState<GameState>(() => initGame())
+  const { token } = useAuth()
+  const [game,    setGame]    = useState<GameState | null>(null)
+  const [loading, setLoading] = useState(() => !!token)
+  const [error,   setError]   = useState<string | null>(null)
+
+  const loadActiveGame = useCallback((authToken: string) => {
+    setLoading(true)
+    setError(null)
+
+    return getDeckActive(authToken)
+      .then(activeDecks => setGame(buildGameFromDecks(activeDecks)))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load active deck.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (!token) return
+    queueMicrotask(() => {
+      void loadActiveGame(token)
+    })
+  }, [token, loadActiveGame])
 
   const update = useCallback((fn: (g: GameState) => void) => {
     setGame(prev => {
+      if (!prev) return prev
       const next = structuredClone(prev)
       fn(next)
       return next
@@ -70,8 +103,9 @@ export function useGameEngine() {
   }, [update])
 
   const restart = useCallback(() => {
-    setGame(initGame())
-  }, [])
+    if (!token) return
+    void loadActiveGame(token)
+  }, [token, loadActiveGame])
 
-  return { game, playCard, swap, attack, endTurn, restart }
+  return { game, loading, error, playCard, swap, attack, endTurn, restart }
 }
