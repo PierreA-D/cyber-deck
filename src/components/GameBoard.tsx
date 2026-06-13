@@ -222,7 +222,7 @@ export function GameBoard() {
         </div>
 
         <div className="mt-3 rounded-sm border border-[#1c1c3a] px-2 py-1 text-[9px] tracking-[0.2em] text-[#36366a] xl:hidden">
-          COMBAT.LOG DISPONIBLE EN PAYSAGE
+          COMBAT.LOG
         </div>
       </aside>
 
