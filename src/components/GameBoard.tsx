@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { useGameEngine } from '../hooks/useGameEngine'
 import { BoardZone } from './BoardZone'
@@ -6,11 +7,32 @@ import { PlayerHand } from './PlayerHand'
 import { CardComponent } from './CardComponent'
 import { GamePhase } from '../engine/GameEngine'
 import { isSwapCard } from '../engine/CardInstance'
+import { AnimatePresence } from 'motion/react'
+import { useAttackAnimation } from '../hooks/useAttackAnimation'
 
 export function GameBoard() {
-  const { game, loading, error, playCard, swap, attack, endTurn, restart } = useGameEngine()
+  const { game, loading, error, playCard, swap, attack, endTurn, restart, saveGame } = useGameEngine()
+  const savedRef = useRef(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [targetId,   setTargetId]   = useState<string | null>(null)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const { registerRef, playAttack, playHit } = useAttackAnimation()
+
+  useEffect(() => {
+    if (!game) return
+    if (game.phase !== GamePhase.GameOver) return
+    if (savedRef.current) return
+
+    savedRef.current = true
+    void saveGame(game.result.status, game.turn)
+  }, [game, saveGame])
+
+  // Reset le flag au restart
+  const handleRestart = () => {
+    savedRef.current = false
+    restart()
+  }
 
   if (loading) {
     return (
@@ -22,10 +44,16 @@ export function GameBoard() {
 
   if (error || !game) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050508] font-mono">
-        <div className="border border-[#ff3d3d] p-8 text-center text-sm tracking-[0.2em] text-[#ff3d3d]">
-          {error ?? 'NO_ACTIVE_DECK_FOUND'}
-        </div>
+      <div className="min-h-screen bg-[#0a0a0f] font-mono text-cyan-400 flex flex-col items-center justify-center gap-6">
+        <p className="tracking-[2px] text-red-500 text-sm border border-red-500 p-4">
+          {error}
+        </p>
+        <button
+          onClick={() => navigate({ to: '/decks' })}
+          className="px-8 py-3 border border-cyan-400 text-cyan-400 text-xs tracking-[2px] hover:bg-cyan-400 hover:text-[#0a0a0f] transition-all"
+        >
+          MANAGE DECKS
+        </button>
       </div>
     )
   }
@@ -59,23 +87,42 @@ export function GameBoard() {
     setActiveDragId(null)
   }
 
-  function handleBoardClick(instanceId: string) {
-    if (!isPlayerTurn) return
-    setSelectedId(prev => prev === instanceId ? null : instanceId)
+  function handleEnemyCardClick(instanceId: string) {
+    if (!isPlayerTurn || !selectedId) return
+    setTargetId(instanceId)
   }
 
-  function handleAttack() {
-    if (!selectedId) return
+  function handleBoardClick(instanceId: string) {
+    if (!isPlayerTurn) return
+    const card = game.player.board.find(c => c.instanceId === instanceId)
+    if (!card || card.isExhausted) return
+    setSelectedId(prev => prev === instanceId ? null : instanceId)
+    setTargetId(null)
+  }
+
+  async function handleAttack() {
+    if (!selectedId || !game) return
+
+    const targetCard = targetId
+      ? [...game.enemy.board, game.enemy.champion].find(c => c.instanceId === targetId)
+      : game.enemy.board.length > 0
+        ? game.enemy.board[0]
+        : game.enemy.champion
+
+    if (!targetCard) return
+
+    await playAttack(selectedId, targetCard.instanceId)
     attack(selectedId)
     setSelectedId(null)
+    setTargetId(null)
   }
 
   const statusColor = isGameOver ? '#ff3d3d' : isPlayerTurn ? '#00e5ff' : '#ff0060'
   const statusText = isGameOver
     ? game.result.status.replace('_', '/').toUpperCase()
     : isPlayerTurn ? 'PLAYER_TURN' : 'AI_PROC...'
-
-  const strikeReady = !!selectedId && isPlayerTurn
+  const selectedCard = game.player.board.find(c => c.instanceId === selectedId)
+  const strikeReady  = !!selectedId && isPlayerTurn && !selectedCard?.isExhausted
   const activeDraggedCard = activeDragId
     ? game.player.hand.find(c => c.instanceId === activeDragId)
     : undefined
@@ -141,7 +188,7 @@ export function GameBoard() {
                   ENEMY.CHAMPION
                 </div>
                 <div className="origin-top-right scale-[0.9] xl:scale-[0.86]">
-                  <CardComponent card={game.enemy.champion} />
+                  <CardComponent card={game.enemy.champion} onRegisterRef={registerRef} />
                 </div>
               </div>
             </div>
@@ -152,6 +199,9 @@ export function GameBoard() {
                 id="enemy-board"
                 label="ENEMY.FIELD"
                 cards={game.enemy.board}
+                onCardClick={handleEnemyCardClick}
+                onRegisterRef={registerRef}
+                selectedId={targetId}
                 attackable={strikeReady}
               />
             </div>
@@ -170,6 +220,7 @@ export function GameBoard() {
                 label="ALLY.FIELD"
                 cards={game.player.board}
                 onCardClick={handleBoardClick}
+                onRegisterRef={registerRef}
                 selectedId={selectedId}
                 highlight={isPlayerTurn}
               />
@@ -190,7 +241,9 @@ export function GameBoard() {
       <aside className="anim-boot hidden min-h-0 flex-col rounded-sm border border-[#1c1c3a] bg-[#07070e] p-3 [animation-delay:320ms] xl:flex">
         <div className="mb-3">
           <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#00e5ff55]">ALLY.CHAMPION</div>
-          <CardComponent card={game.player.champion} />
+          <AnimatePresence>
+            <CardComponent card={game.player.champion} animateAs="champion" onRegisterRef={registerRef} />
+          </AnimatePresence>
         </div>
 
         <div className="flex flex-col gap-2.5 border-t border-[#1c1c3a] pt-3">
@@ -222,7 +275,7 @@ export function GameBoard() {
 
           {isGameOver && (
             <button
-              onClick={restart}
+              onClick={handleRestart}
               className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#ffe000] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ffe000]/70"
               style={{
                 border: '1px solid #ffe000',
@@ -247,7 +300,9 @@ export function GameBoard() {
 
       <div className="anim-boot flex flex-col gap-2 rounded-sm border border-[#1c1c3a] bg-[#07070e] p-3 xl:hidden">
         <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#00e5ff55]">ALLY.CHAMPION</div>
-        <CardComponent card={game.player.champion} />
+          <AnimatePresence>
+            <CardComponent card={game.player.champion} animateAs="champion" onRegisterRef={registerRef} />
+          </AnimatePresence>
 
         <div className="mt-2 flex flex-wrap gap-2">
           <button

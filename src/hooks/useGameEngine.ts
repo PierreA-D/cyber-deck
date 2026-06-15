@@ -6,22 +6,39 @@ import { DeckColor } from '../engine/CardEnums'
 import { runAITurn } from '../engine/AIPlayer'
 import { useAuth } from '../context/useAuth'
 
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+
 function toDeckColor(color: string): DeckColor {
   const found = Object.values(DeckColor).find(v => v.toLowerCase() === color.toLowerCase())
   return found ?? DeckColor.Red
 }
 
 function buildGameFromDecks(activeDecks: Deck[]): GameState {
-  const sourceA = activeDecks[0]?.cards ?? []
-  const sourceB = activeDecks[1]?.cards ?? sourceA
+  if (activeDecks.length < 2) {
+    throw new Error('You need exactly 2 active decks to play.')
+  }
+
+  const sourceA = activeDecks[0].cards
+  const sourceB = activeDecks[1].cards
 
   const isChampion = (c: Deck['cards'][number]) => c.type.toLowerCase() === 'champion'
-  const championPayload = sourceA.find(isChampion) ?? sourceB.find(isChampion)
+
+  const championA = sourceA.find(isChampion)
+  const championB = sourceB.find(isChampion)
+
+  if (!championA) {
+    throw new Error(`Deck "${activeDecks[0].name}" has no Champion card.`)
+  }
+
+  if (!championB) {
+    throw new Error(`Deck "${activeDecks[1].name}" has no Champion card.`)
+  }
 
   const deckA = sourceA.filter(c => !isChampion(c)).map(resolveDeckCard)
   const deckB = sourceB.filter(c => !isChampion(c)).map(resolveDeckCard)
-  const playerColor = toDeckColor(activeDecks[0]?.color ?? 'Red')
-  const playerChampion = championPayload ? resolveDeckCard(championPayload) : getChampion(playerColor)
+
+  const playerColor    = toDeckColor(activeDecks[0].color)
+  const playerChampion = resolveDeckCard(championA)
 
   const player = createPlayerState('player', deckA, deckB, playerChampion)
   const enemy  = createPlayerState(
@@ -30,6 +47,7 @@ function buildGameFromDecks(activeDecks: Deck[]): GameState {
     generateDeck(DeckColor.Blue),
     getChampion(DeckColor.Blue),
   )
+
   return createGameState(player, enemy)
 }
 
@@ -107,5 +125,21 @@ export function useGameEngine() {
     void loadActiveGame(token)
   }, [token, loadActiveGame])
 
-  return { game, loading, error, playCard, swap, attack, endTurn, restart }
+  const saveGame = useCallback(async (result: string, turnsCount: number) => {
+    if (!token) return
+    try {
+      await fetch(`${API}/api/games`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ result, turnsCount }),
+      })
+    } catch (e) {
+      console.error('Failed to save game:', e)
+    }
+  }, [token])
+
+  return { game, loading, error, playCard, swap, attack, endTurn, restart, saveGame }
 }

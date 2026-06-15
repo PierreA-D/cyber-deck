@@ -1,18 +1,20 @@
 import { useDroppable } from '@dnd-kit/core'
 import { type CardInstance } from '../engine/CardInstance'
 import { CardComponent } from './CardComponent'
+import { AnimatePresence } from 'motion/react'
 
 interface Props {
   id: string
   label: string
   cards: CardInstance[]
   onCardClick?: (instanceId: string) => void
+  onRegisterRef?: (instanceId: string, el: HTMLElement | null) => void
   selectedId?: string | null
   highlight?: boolean
   attackable?: boolean
 }
 
-export function BoardZone({ id, label, cards, onCardClick, selectedId, highlight, attackable }: Props) {
+export function BoardZone({ id, label, cards, onCardClick, selectedId, highlight, attackable, onRegisterRef }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
   const borderColor = isOver    ? '#00ff4c'
@@ -70,19 +72,18 @@ export function BoardZone({ id, label, cards, onCardClick, selectedId, highlight
       </div>
 
       <div className="flex flex-1 flex-nowrap gap-2 items-start">
-        {cards.map((card, index) => (
-          <div
-            key={card.instanceId}
-            className="anim-boot"
-            style={{ animationDelay: `${index * 45}ms` }}
-          >
+        <AnimatePresence mode="popLayout">
+          {cards.map(card => (
             <CardComponent
+              key={card.instanceId}
               card={card}
+              animateAs="board"
               selected={card.instanceId === selectedId}
               onClick={() => onCardClick?.(card.instanceId)}
+              onRegisterRef={onRegisterRef}
             />
-          </div>
-        ))}
+          ))}
+        </AnimatePresence>
         {cards.length === 0 && (
           <div className="p-2 text-[10px] tracking-[0.2em] text-[#2a2a4a]">
             {isOver ? '// DEPLOY_UNIT' : '-- EMPTY --'}

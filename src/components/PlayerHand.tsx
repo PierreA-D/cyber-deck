@@ -1,5 +1,6 @@
 import { type CardInstance } from '../engine/CardInstance'
 import { CardComponent } from './CardComponent'
+import { AnimatePresence } from 'motion/react'
 
 interface Props {
   cards: CardInstance[]
@@ -36,21 +37,19 @@ export function PlayerHand({ cards, onCardClick, selectedId, disabled }: Props) 
       </div>
 
       <div className="min-h-0 flex flex-1 flex-nowrap items-start gap-2 overflow-x-auto overflow-y-hidden pl-1 py-2">
-        {cards.map((card, index) => (
-          <div
-            key={card.instanceId}
-            className="anim-boot"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
+        <AnimatePresence mode="popLayout">
+          {cards.map(card => (
             <CardComponent
+              key={card.instanceId}
               card={card}
               draggable={!disabled}
+              animateAs="hand"
               selected={card.instanceId === selectedId}
               onClick={() => onCardClick?.(card.instanceId)}
               disabled={disabled}
             />
-          </div>
-        ))}
+          ))}
+        </AnimatePresence>
         {cards.length === 0 && (
           <div className="p-2 text-[10px] tracking-[0.2em] text-[#2a2a4a]">
             -- NO_DATA --
