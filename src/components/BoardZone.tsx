@@ -2,6 +2,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { type CardInstance } from '../engine/CardInstance'
 import { CardComponent } from './CardComponent'
 import { AnimatePresence } from 'motion/react'
+import { DroppableCard } from './DroppableCard'
 
 interface Props {
   id: string
@@ -12,9 +13,11 @@ interface Props {
   selectedId?: string | null
   highlight?: boolean
   attackable?: boolean
+  droppableTargets?: boolean
+  draggableUnits?: boolean
 }
 
-export function BoardZone({ id, label, cards, onCardClick, selectedId, highlight, attackable, onRegisterRef }: Props) {
+export function BoardZone({ id, label, cards, onCardClick, selectedId, highlight, attackable, droppableTargets, draggableUnits, onRegisterRef }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
   const borderColor = isOver    ? '#00ff4c'
@@ -71,17 +74,27 @@ export function BoardZone({ id, label, cards, onCardClick, selectedId, highlight
         {attackable && !isOver && <span className="ml-1.5">// SELECT_TARGET</span>}
       </div>
 
-      <div className="flex flex-1 flex-nowrap gap-2 items-start">
+      <div className="flex flex-1 flex-nowrap gap-2 items-start overflow-x-auto">
         <AnimatePresence mode="popLayout">
           {cards.map(card => (
-            <CardComponent
-              key={card.instanceId}
-              card={card}
-              animateAs="board"
-              selected={card.instanceId === selectedId}
-              onClick={() => onCardClick?.(card.instanceId)}
-              onRegisterRef={onRegisterRef}
-            />
+            droppableTargets ? (
+              <DroppableCard
+                key={card.instanceId}
+                card={card}
+                onRegisterRef={onRegisterRef}
+                animateAs="board"
+              />
+            ) : (
+              <CardComponent
+                key={card.instanceId}
+                card={card}
+                animateAs="board"
+                draggable={draggableUnits}
+                selected={card.instanceId === selectedId}
+                onClick={() => onCardClick?.(card.instanceId)}
+                onRegisterRef={onRegisterRef}
+              />
+            )
           ))}
         </AnimatePresence>
         {cards.length === 0 && (

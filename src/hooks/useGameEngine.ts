@@ -95,12 +95,18 @@ export function useGameEngine() {
     })
   }, [update])
 
-  const attack = useCallback((attackerInstanceId: string) => {
+  const attack = useCallback((attackerInstanceId: string, targetInstanceId?: string) => {
     update(g => {
       const attacker = g.player.board.find(c => c.instanceId === attackerInstanceId)
       if (!attacker) return
-      const target = getAttackTarget('player', g)
+
+      const explicitTarget = targetInstanceId
+        ? [...g.enemy.board, g.enemy.champion].find(c => c.instanceId === targetInstanceId)
+        : undefined
+
+      const target = explicitTarget ?? getAttackTarget('player', g)
       if (!target) return
+
       resolveAttack(attacker, target, g)
       cleanupBoard(g.enemy)
     })
