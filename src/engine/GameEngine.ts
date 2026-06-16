@@ -120,6 +120,8 @@ export function endPlayerTurn(state: GameState): GameResult {
   const drawResult = playerEndTurn(state.player)
   if (drawResult === 'deck_empty') {
     log(state, 'draw', `Player's deck is empty — no card drawn.`)
+  } else if (drawResult === 'hand_full') {
+    log(state, 'draw', `Player's hand is full — no card drawn.`)
   }
 
   state.phase = GamePhase.EnemyTurn
@@ -141,6 +143,8 @@ export function endEnemyTurn(state: GameState): GameResult {
   const drawResult = playerEndTurn(state.enemy)
   if (drawResult === 'deck_empty') {
     log(state, 'draw', `Enemy's deck is empty — no card drawn.`)
+  } else if (drawResult === 'hand_full') {
+    log(state, 'draw', `Enemy's hand is full — no card drawn.`)
   }
 
   state.turn  += 1

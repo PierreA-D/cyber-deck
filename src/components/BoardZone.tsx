@@ -47,7 +47,7 @@ export function BoardZone({ id, label, cards, onCardClick, selectedId, highlight
   return (
     <div
       ref={setNodeRef}
-      className="relative flex h-[210px] flex-col rounded-sm px-3 py-3 transition-[border-color,box-shadow,background-color] duration-200 ease-out md:h-[230px] xl:h-[200px]"
+      className="relative flex min-h-[112px] flex-1 flex-col rounded-sm px-2.5 py-2.5 transition-[border-color,box-shadow,background-color] duration-200 ease-out sm:px-3 sm:py-3 xl:h-[200px] xl:min-h-0 xl:flex-none"
       style={{
         border: `1px solid ${borderColor}`,
         background: zoneBackground,
@@ -74,7 +74,7 @@ export function BoardZone({ id, label, cards, onCardClick, selectedId, highlight
         {attackable && !isOver && <span className="ml-1.5">// SELECT_TARGET</span>}
       </div>
 
-      <div className="flex flex-1 flex-nowrap gap-2 items-start overflow-x-auto">
+      <div className="flex min-h-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden">
         <AnimatePresence mode="popLayout">
           {cards.map(card => (
             droppableTargets ? (

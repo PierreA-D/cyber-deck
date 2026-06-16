@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { DndContext, DragOverlay, type DragEndEvent, type DragMoveEvent, type DragStartEvent } from '@dnd-kit/core'
+import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent, type DragMoveEvent, type DragStartEvent } from '@dnd-kit/core'
 import { useGameEngine } from '../hooks/useGameEngine'
 import { BoardZone } from './BoardZone'
 import { PlayerHand } from './PlayerHand'
@@ -20,6 +20,17 @@ export function GameBoard() {
   const [arrowRects,    setArrowRects]    = useState<{ from: DOMRect; to: DOMRect; color: string } | null>(null)
   const [dragArrowRects, setDragArrowRects] = useState<{ from: DOMRect; to: DOMRect; color: string } | null>(null)
   const navigate = useNavigate()
+
+  // Capteurs DnD : souris (desktop) + tactile (mobile).
+  // Le délai sur le tactile permet de distinguer un drag d'un scroll de zone.
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  )
 
   // 1. useAttackAnimation en premier
   const { registerRef, playAttack } = useAttackAnimation({
@@ -244,7 +255,7 @@ export function GameBoard() {
     : undefined
 
   return (
-    <div className="mx-auto grid h-screen w-full max-w-[1820px] grid-cols-1 gap-3 overflow-hidden px-3 py-3 sm:px-4 sm:py-4 xl:grid-cols-[240px_minmax(0,1fr)_240px] xl:gap-4">
+    <div className="mx-auto grid h-screen w-full max-w-[1820px] grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-3 overflow-hidden px-3 py-3 sm:px-4 sm:py-4 xl:grid-cols-[240px_minmax(0,1fr)_240px] xl:grid-rows-1 xl:gap-4">
 
       {/* Combat log */}
       <aside className="anim-boot hidden min-h-0 flex-col rounded-sm border border-[#1c1c3a] bg-[#07070e] p-3 xl:flex">
@@ -273,13 +284,13 @@ export function GameBoard() {
       </aside>
 
       {/* Main board */}
-      <DndContext onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
         <div className="anim-boot min-h-0 w-full rounded-sm border border-[#1c1c3a] bg-[#050508] bg-[linear-gradient(rgba(0,229,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(0,229,255,0.025)_1px,transparent_1px)] bg-[size:40px_40px] p-3 transition-colors duration-300 sm:p-4 lg:px-5">
           <div className="flex h-full min-h-0 flex-col gap-1.5 overflow-hidden xl:gap-1">
 
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#1c1c3a] pb-3">
-              <div className="glitch text-[22px] font-bold tracking-[0.38em] text-[#00e5ff]">
+            <div className="flex items-center justify-between border-b border-[#1c1c3a] pb-2 sm:pb-3">
+              <div className="glitch text-[15px] font-bold tracking-[0.2em] text-[#00e5ff] sm:text-[22px] sm:tracking-[0.38em]">
                 CYBER_DECK
               </div>
               <div className="flex items-center gap-3">
@@ -317,7 +328,7 @@ export function GameBoard() {
             </div>
 
             {/* Enemy field */}
-            <div className="anim-boot [animation-delay:120ms]">
+            <div className="anim-boot flex min-h-0 flex-1 flex-col [animation-delay:120ms] xl:flex-none">
               <BoardZone
                 id="enemy-board"
                 label="ENEMY.FIELD"
@@ -338,7 +349,7 @@ export function GameBoard() {
             </div>
 
             {/* Player field */}
-            <div className="anim-boot [animation-delay:170ms]">
+            <div className="anim-boot flex min-h-0 flex-1 flex-col [animation-delay:170ms] xl:flex-none">
               <BoardZone
                 id="player-board"
                 label="ALLY.FIELD"
@@ -352,7 +363,7 @@ export function GameBoard() {
             </div>
 
             {/* Hand */}
-            <div className="anim-boot flex flex-col gap-1.5 [animation-delay:220ms] xl:gap-1">
+            <div className="anim-boot flex min-h-0 flex-1 flex-col gap-1.5 [animation-delay:220ms] xl:flex-none xl:gap-1">
               <PlayerHand cards={game.player.hand} disabled={!isPlayerTurn} />
             </div>
 
@@ -422,17 +433,19 @@ export function GameBoard() {
       </aside>
 
       {/* Bottom bar — mobile */}
-      <div className="anim-boot flex flex-col gap-2 rounded-sm border border-[#1c1c3a] bg-[#07070e] p-3 xl:hidden">
-        <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#00e5ff55]">ALLY.CHAMPION</div>
-        <AnimatePresence>
-          <CardComponent card={game.player.champion} animateAs="champion" onRegisterRef={registerRef} />
-        </AnimatePresence>
+      <div className="anim-boot flex items-stretch gap-3 rounded-sm border border-[#1c1c3a] bg-[#07070e] p-2.5 xl:hidden">
+        <div className="flex shrink-0 flex-col gap-1">
+          <div className="text-[8px] tracking-[0.3em] text-[#00e5ff55]">ALLY.CHAMPION</div>
+          <AnimatePresence>
+            <CardComponent card={game.player.champion} animateAs="champion" onRegisterRef={registerRef} />
+          </AnimatePresence>
+        </div>
 
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
           <button
             onClick={handleAttack}
             disabled={!strikeReady}
-            className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3d3d]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
+            className="w-full cursor-pointer bg-transparent px-3 py-2.5 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3d3d]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
             style={{
               color:     strikeReady ? '#ff3d3d' : '#2a2a5a',
               border:    `1px solid ${strikeReady ? '#ff3d3d' : '#1c1c3a'}`,
@@ -445,7 +458,7 @@ export function GameBoard() {
           <button
             onClick={endTurn}
             disabled={!isPlayerTurn}
-            className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#00e5ff]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
+            className="w-full cursor-pointer bg-transparent px-3 py-2.5 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#00e5ff]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
             style={{
               color:     isPlayerTurn ? '#00e5ff' : '#2a2a5a',
               border:    `1px solid ${isPlayerTurn ? '#00e5ff' : '#1c1c3a'}`,
@@ -454,6 +467,19 @@ export function GameBoard() {
           >
             [END_TURN]
           </button>
+
+          {isGameOver && (
+            <button
+              onClick={handleRestart}
+              className="w-full cursor-pointer bg-transparent px-3 py-2.5 text-[11px] uppercase tracking-[0.2em] text-[#ffe000] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ffe000]/70"
+              style={{
+                border:    '1px solid #ffe000',
+                boxShadow: '0 0 10px rgba(255,224,0,0.3)',
+              }}
+            >
+              [REBOOT_SYS]
+            </button>
+          )}
         </div>
       </div>
 

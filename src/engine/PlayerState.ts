@@ -62,7 +62,8 @@ export function drawFromActiveDeck(state: PlayerState): CardInstance | null {
   return top
 }
 
-export function drawCard(state: PlayerState): 'drawn' | 'deck_empty' {
+export function drawCard(state: PlayerState): 'drawn' | 'deck_empty' | 'hand_full' {
+  if (state.hand.length >= HAND_SIZE) return 'hand_full'
   const card = drawFromActiveDeck(state)
   if (!card) return 'deck_empty'
   state.hand.push(card)
@@ -109,7 +110,7 @@ export function discardFromBoard(state: PlayerState, instanceId: string): boolea
   return true
 }
 
-export function endTurn(state: PlayerState): 'drawn' | 'deck_empty' {
+export function endTurn(state: PlayerState): 'drawn' | 'deck_empty' | 'hand_full' {
   state.hasSwappedThisTurn = false
   for (const card of state.board) {
     card.isExhausted = false

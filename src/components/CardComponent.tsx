@@ -1,4 +1,5 @@
 import { useDraggable } from '@dnd-kit/core'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { type CardInstance, isSwapCard } from '../engine/CardInstance'
 import { CardType } from '../engine/CardEnums'
@@ -65,6 +66,14 @@ export function CardComponent({ card, draggable, onClick, selected, disabled, an
     disabled: !draggable || disabled,
   })
 
+  // Retour visuel d'« armement » pendant l'appui tactile, avant le déclenchement du drag.
+  const canDrag = !!draggable && !disabled
+  const [charging, setCharging] = useState(false)
+
+  useEffect(() => {
+    if (isDragging) setCharging(false)
+  }, [isDragging])
+
   const hpPct   = card.data.maxHp ? Math.max(0, card.currentHp / card.data.maxHp) : 1
   const hpColor = hpPct > 0.6 ? '#00ff4c' : hpPct > 0.3 ? '#ffe000' : '#ff3d3d'
 
@@ -76,13 +85,14 @@ export function CardComponent({ card, draggable, onClick, selected, disabled, an
   const anim = getAnim(animateAs)
 
   const cardStyle = {
-    width:     isChamp ? 'clamp(106px, 12.4vw, 128px)' : 'clamp(92px, 10.4vw, 106px)',
-    minHeight: isChamp ? 'clamp(126px, 14.2vw, 148px)' : 'clamp(106px, 12.2vw, 126px)',
+    width:     isChamp ? 'clamp(82px, 22vw, 128px)' : 'clamp(70px, 19vw, 106px)',
+    minHeight: isChamp ? 'clamp(104px, 26vw, 148px)' : 'clamp(90px, 22vw, 126px)',
     background: selected ? ts.selBg : '#0c0c1e',
     border:    `1px solid ${selected ? '#ffffff' : ts.color}`,
     cursor:    draggable && !disabled ? 'grab' : disabled ? 'default' : 'pointer',
     opacity:   isDragging ? 0.15 : card.isExhausted ? 0.4 : 1,
     transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
+    touchAction: draggable && !disabled ? 'none' : undefined,
     zIndex:    isDragging ? 999 : undefined,
     boxShadow: selected
       ? `0 0 14px ${ts.color}88, inset 0 0 20px ${ts.color}10`
@@ -104,8 +114,26 @@ export function CardComponent({ card, draggable, onClick, selected, disabled, an
       className={`relative flex select-none flex-col gap-1 rounded-sm px-2 py-1.5 text-[11px] text-[#c0c0e0] ${moveClass}`}
       style={cardStyle}
       onClick={disabled ? undefined : onClick}
+      onPointerDown={canDrag ? () => setCharging(true) : undefined}
+      onPointerUp={canDrag ? () => setCharging(false) : undefined}
+      onPointerCancel={canDrag ? () => setCharging(false) : undefined}
+      onPointerLeave={canDrag ? () => setCharging(false) : undefined}
       {...(draggable ? { ...listeners, ...attributes } : {})}
     >
+      {/* Indicateur de saisie (appui avant le drag) */}
+      <AnimatePresence>
+        {charging && !isDragging && (
+          <motion.div
+            key="charge"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+            className="pointer-events-none absolute inset-0 z-10 rounded-sm"
+            style={{ boxShadow: `inset 0 0 0 2px ${ts.color}, 0 0 12px ${ts.color}66`, background: `${ts.color}12` }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Corner accent */}
       <div
         className="absolute right-0 top-0 h-2.5 w-2.5 opacity-90 [clip-path:polygon(0_0,100%_0,100%_100%)]"

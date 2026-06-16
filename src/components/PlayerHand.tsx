@@ -16,7 +16,7 @@ export function PlayerHand({ cards, onCardClick, selectedId, disabled }: Props) 
 
   return (
     <div
-      className="relative flex h-[196px] flex-col rounded-sm px-3 py-3 transition-[border-color,background-color,box-shadow] duration-200 ease-out md:h-[210px] xl:h-[188px]"
+      className="relative flex min-h-[108px] flex-1 flex-col rounded-sm px-2.5 py-2.5 transition-[border-color,background-color,box-shadow] duration-200 ease-out sm:px-3 sm:py-3 xl:h-[188px] xl:min-h-0 xl:flex-none"
       style={{ border: `1px solid ${borderColor}`, background: panelBackground }}
     >
       <div
@@ -36,7 +36,7 @@ export function PlayerHand({ cards, onCardClick, selectedId, disabled }: Props) 
         {disabled && <span className="ml-1.5 text-[#22224a]">// STANDBY</span>}
       </div>
 
-      <div className="min-h-0 flex flex-1 flex-nowrap items-start gap-2 overflow-x-auto overflow-y-hidden pl-1 py-2">
+      <div className="min-h-0 flex flex-1 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden pl-1 py-1">
         <AnimatePresence mode="popLayout">
           {cards.map(card => (
             <CardComponent
