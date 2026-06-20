@@ -5,7 +5,7 @@ import {
   resolveSpell, resolveAutoTarget, type SpellTarget,
 } from '../engine/GameEngine'
 import { createPlayerState, playSwap, playCardToBoard, playSpellCard } from '../engine/PlayerState'
-import { generateDeck, getLegend, getDeckActive, resolveDeckCard, type Deck } from '../engine/CardDatabase'
+import { generateDeck, getLegend, getDeckActive, resolveDeckCard, type Deck, shuffle } from '../engine/CardDatabase'
 import { DeckColor, TargetType } from '../engine/CardEnums'
 import { runAITurn } from '../engine/AIPlayer'
 import { isSpellCard, type CardInstance } from '../engine/CardInstance'
@@ -40,7 +40,7 @@ function buildGameFromDecks(activeDecks: Deck[]): GameState {
   const playerColor  = toDeckColor(activeDecks[0].color)
   const playerLegend = resolveDeckCard(legendA)
 
-  const player = createPlayerState('player', deckA, deckB, playerLegend)
+  const player = createPlayerState('player', shuffle(deckA), shuffle(deckB), playerLegend)
   const enemy  = createPlayerState(
     'enemy',
     generateDeck(DeckColor.Blue),

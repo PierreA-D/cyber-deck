@@ -90,7 +90,7 @@ export function resolveAttack(
 }
 
 function tickTemporaryEffects(playerState: PlayerState): void {
-  const cards = [...playerState.board, playerState.champion].filter(Boolean)
+  const cards = [...playerState.board, playerState.legend].filter(Boolean)
 
   for (const card of cards) {
     if (card.buffExpiresIn !== undefined) {

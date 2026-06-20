@@ -1,4 +1,4 @@
-import type { CardData } from './CardData'
+import type { CardData, SpellEffect } from './CardData'
 import { CardType, DeckColor } from './CardEnums'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
@@ -17,6 +17,15 @@ export interface DeckCard {
   attack?: number
   maxHp?: number
   healAmount?: number
+  spellEffect?: {
+    targetType: string
+    targetSide: string
+    targetMode: string
+    targetRule?: string | null
+    effectType: string
+    value: number
+    duration?: number | null
+  } | null
 }
 
 export interface Deck {
@@ -47,6 +56,9 @@ function normalizeCardType(type: string): CardType {
   if (lower === 'defender') return CardType.Defender
   if (lower === 'healer') return CardType.Healer
   if (lower === 'legend') return CardType.Legend
+  if (lower === 'implant') return CardType.Implant
+  if (lower === 'protocole') return CardType.Protocole
+  if (lower === 'overclock') return CardType.Overclock
   return CardType.Warrior
 }
 
@@ -65,13 +77,26 @@ function buildApiCardId(deckCard: DeckCard): string {
   return `api_${String(deckCard.id)}`
 }
 
+function toSpellEffect(raw: DeckCard['spellEffect']): SpellEffect | undefined {
+  if (!raw) return undefined
+  return {
+    targetType: raw.targetType as SpellEffect['targetType'],
+    targetSide: raw.targetSide as SpellEffect['targetSide'],
+    targetMode: raw.targetMode as SpellEffect['targetMode'],
+    targetRule: raw.targetRule as SpellEffect['targetRule'] | undefined,
+    effectType: raw.effectType as SpellEffect['effectType'],
+    value: raw.value,
+    duration: raw.duration ?? undefined,
+  }
+}
+
 export function resolveDeckCard(deckCard: DeckCard): CardData {
   const directId = deckCard.cardId ?? deckCard.card_id ?? deckCard.card?.id
   if (directId) {
     try {
       return getCard(directId)
     } catch {
-      // Continue with payload-based fallback when API id is not in local registry.
+      // fallback
     }
   }
 
@@ -93,6 +118,7 @@ export function resolveDeckCard(deckCard: DeckCard): CardData {
     attack: deckCard.attack ?? (type === CardType.Warrior ? 2 : type === CardType.Defender ? 1 : type === CardType.Legend ? 2 : undefined),
     maxHp: deckCard.maxHp ?? (type === CardType.Warrior ? 3 : type === CardType.Defender ? 5 : type === CardType.Legend ? 5 : undefined),
     healAmount: deckCard.healAmount ?? (type === CardType.Healer ? 2 : undefined),
+    spellEffect: toSpellEffect(deckCard.spellEffect),
   }
 }
 
@@ -154,7 +180,7 @@ function repeatToFill(pool: CardData[], count: number): CardData[] {
   return result
 }
 
-function shuffle<T>(arr: T[]): T[] {
+export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))

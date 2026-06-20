@@ -83,6 +83,7 @@ export function BoardZone({ id, label, cards, onCardClick, selectedId, highlight
                 card={card}
                 onRegisterRef={onRegisterRef}
                 animateAs="board"
+                onClick={onCardClick}
               />
             ) : (
               <CardComponent

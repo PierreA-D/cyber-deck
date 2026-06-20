@@ -21,10 +21,13 @@ interface TypeStyle {
 }
 
 const TYPE_STYLE: Record<CardType, TypeStyle> = {
-  [CardType.Warrior]:  { color: '#ff3d3d', selBg: 'rgba(255,61,61,0.14)',  code: 'UNIT.WAR' },
-  [CardType.Defender]: { color: '#00e5ff', selBg: 'rgba(0,229,255,0.12)',  code: 'UNIT.DEF' },
-  [CardType.Healer]:   { color: '#00ff4c', selBg: 'rgba(0,255,76,0.12)',   code: 'UNIT.HLR' },
-  [CardType.Legend]: { color: '#ffe000', selBg: 'rgba(255,224,0,0.10)',  code: 'SYS.CHAM' },
+  [CardType.Warrior]:   { color: '#ff3d3d', selBg: 'rgba(255,61,61,0.14)',  code: 'UNIT.WAR' },
+  [CardType.Defender]:  { color: '#00e5ff', selBg: 'rgba(0,229,255,0.12)',  code: 'UNIT.DEF' },
+  [CardType.Healer]:    { color: '#00ff4c', selBg: 'rgba(0,255,76,0.12)',   code: 'UNIT.HLR' },
+  [CardType.Legend]:    { color: '#ffe000', selBg: 'rgba(255,224,0,0.10)',  code: 'SYS.CHAM' },
+  [CardType.Implant]:   { color: '#b000ff', selBg: 'rgba(176,0,255,0.12)',  code: 'SPL.IMP' },
+  [CardType.Overclock]: { color: '#ff8a00', selBg: 'rgba(255,138,0,0.12)',  code: 'SPL.OVR' },
+  [CardType.Protocole]: { color: '#00ffd0', selBg: 'rgba(0,255,208,0.12)',  code: 'SPL.PRT' },
 }
 
 const SWAP_STYLE: TypeStyle = { color: '#b000ff', selBg: 'rgba(176,0,255,0.14)', code: 'SYS.SWAP' }
