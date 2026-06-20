@@ -35,7 +35,7 @@ export function NewDeckPage() {
       })
       if (!res.ok) throw new Error('Failed to fetch cards.')
       const all: Card[] = await res.json()
-      return all.filter(c => c.color === color && c.type !== 'Champion')
+      return all.filter(c => c.color === color && c.type !== 'Legend')
     },
   })
 
@@ -69,7 +69,7 @@ export function NewDeckPage() {
     WARRIOR:  'text-red-400 border-red-900',
     DEFENDER: 'text-blue-400 border-blue-900',
     HEALER:   'text-green-400 border-green-900',
-    CHAMPION: 'text-yellow-400 border-yellow-900',
+    LEGEND:   'text-yellow-400 border-yellow-900',
   }
 
   return (

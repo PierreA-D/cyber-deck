@@ -84,7 +84,7 @@ export function EditDeckPage() {
       })
       if (!res.ok) throw new Error('Failed to fetch cards.')
       const all: Card[] = await res.json()
-      return all.filter(c => c.color === color && c.type !== 'Champion')
+      return all.filter(c => c.color === color && c.type !== 'Legend')
     },
   })
 

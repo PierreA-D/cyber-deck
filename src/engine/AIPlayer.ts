@@ -58,10 +58,10 @@ function getBestHealTarget(state: GameState) {
     })
   }
 
-  // Si aucune unité blessée, soigne le Champion si nécessaire
-  const champion = state.enemy.champion
-  if (champion.currentHp < (champion.data.maxHp ?? 5)) {
-    return champion
+  // Si aucune unité blessée, soigne le Legend si nécessaire
+  const legend = state.enemy.legend
+  if (legend.currentHp < (legend.data.maxHp ?? 5)) {
+    return legend
   }
 
   return null

@@ -10,7 +10,7 @@ interface Props {
   onClick?: () => void
   selected?: boolean
   disabled?: boolean
-  animateAs?: 'hand' | 'board' | 'champion'
+  animateAs?: 'hand' | 'board' | 'legend'
   onRegisterRef?: (instanceId: string, el: HTMLElement | null) => void
 }
 
@@ -24,7 +24,7 @@ const TYPE_STYLE: Record<CardType, TypeStyle> = {
   [CardType.Warrior]:  { color: '#ff3d3d', selBg: 'rgba(255,61,61,0.14)',  code: 'UNIT.WAR' },
   [CardType.Defender]: { color: '#00e5ff', selBg: 'rgba(0,229,255,0.12)',  code: 'UNIT.DEF' },
   [CardType.Healer]:   { color: '#00ff4c', selBg: 'rgba(0,255,76,0.12)',   code: 'UNIT.HLR' },
-  [CardType.Champion]: { color: '#ffe000', selBg: 'rgba(255,224,0,0.10)',  code: 'SYS.CHAM' },
+  [CardType.Legend]: { color: '#ffe000', selBg: 'rgba(255,224,0,0.10)',  code: 'SYS.CHAM' },
 }
 
 const SWAP_STYLE: TypeStyle = { color: '#b000ff', selBg: 'rgba(176,0,255,0.14)', code: 'SYS.SWAP' }
@@ -43,22 +43,22 @@ const BOARD_ANIM = {
   transition: { type: 'spring', stiffness: 380, damping: 28 },
 }
 
-const CHAMPION_ANIM = {
+const LEGEND_ANIM = {
   initial:  { opacity: 0, scale: 0.92 },
   animate:  { opacity: 1, scale: 1 },
   exit:     { opacity: 0, scale: 1.1, filter: 'brightness(4) saturate(0)', transition: { duration: 0.4 } },
   transition: { type: 'spring', stiffness: 260, damping: 22 },
 }
 
-function getAnim(animateAs?: 'hand' | 'board' | 'champion') {
+function getAnim(animateAs?: 'hand' | 'board' | 'legend') {
   if (animateAs === 'board')    return BOARD_ANIM
-  if (animateAs === 'champion') return CHAMPION_ANIM
+  if (animateAs === 'legend') return LEGEND_ANIM
   return HAND_ANIM
 }
 
 export function CardComponent({ card, draggable, onClick, selected, disabled, animateAs, onRegisterRef }: Props) {
   const isSwap  = isSwapCard(card)
-  const isChamp = card.data.type === CardType.Champion
+  const isChamp = card.data.type === CardType.Legend
   const ts      = isSwap ? SWAP_STYLE : TYPE_STYLE[card.data.type]
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({

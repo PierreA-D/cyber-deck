@@ -6,7 +6,7 @@ interface Props {
   card: CardInstance
   onRegisterRef?: (instanceId: string, el: HTMLElement | null) => void
   isTarget?: boolean
-  animateAs?: 'board' | 'champion'
+  animateAs?: 'board' | 'legend'
   onClick?: (instanceId: string) => void
 }
 

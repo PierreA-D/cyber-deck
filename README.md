@@ -2,7 +2,7 @@
 
 Prototype de jeu de cartes tactique en tour par tour, construit avec React + TypeScript + Vite.
 
-Le joueur et l'IA s'affrontent avec un champion, un board, une main, et deux decks (actif/passif) pouvant etre echanges via une carte Swap.
+Le joueur et l'IA s'affrontent avec une légende, un board, une main, et deux decks (actif/passif) pouvant etre echanges via une carte Swap.
 
 ## Stack
 
@@ -50,7 +50,7 @@ Application disponible sur http://localhost:5173
 ### Setup
 
 - Chaque joueur possede:
-  - 1 champion (5 HP)
+  - 1 Legend (5 HP)
   - 1 deck actif
   - 1 deck passif
   - 1 main initiale de 4 cartes
@@ -72,7 +72,7 @@ Priorite des cibles:
 1. Defender adverse sur le board
 2. Warrior adverse sur le board
 3. Premiere unite adverse restante
-4. Champion adverse si le board est vide
+4. Legende adverse si le board est vide
 
 ### Effets importants
 
@@ -83,7 +83,7 @@ Priorite des cibles:
 ### Conditions de victoire
 
 Un joueur est considere vaincu si:
-- son champion tombe a 0 HP
+- sa légende tombe a 0 HP
 - ou son deck actif est vide ET sa main est vide
 
 Resultats possibles:
@@ -95,7 +95,7 @@ Resultats possibles:
 
 Le tour IA execute:
 1. Jeu des cartes de la main par priorite: Defender > Warrior > Healer
-2. Soin des unites les plus blessees (ou du champion)
+2. Soin des unites les plus blessees (ou de la légende)
 3. Attaque avec les unites disponibles (hors Healer)
 
 ## Structure du projet

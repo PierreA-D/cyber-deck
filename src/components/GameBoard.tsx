@@ -6,7 +6,7 @@ import { BoardZone } from './BoardZone'
 import { PlayerHand } from './PlayerHand'
 import { CardComponent } from './CardComponent'
 import { GamePhase } from '../engine/GameEngine'
-import { isSwapCard } from '../engine/CardInstance'
+import { isSwapCard, isSpellCard } from '../engine/CardInstance'
 import { AnimatePresence } from 'motion/react'
 import { useAttackAnimation } from '../hooks/useAttackAnimation'
 import { DroppableCard } from './DroppableCard'
@@ -41,7 +41,10 @@ export function GameBoard() {
   })
 
   // 2. useGameEngine qui utilise playAttack
-  const { game, loading, error, playCard, swap, attack, endTurn, restart, saveGame } = useGameEngine({
+  const {
+    game, loading, error, playCard, swap, attack, endTurn, restart, saveGame,
+    playSpell, pendingSpell, resolvePendingSpellTarget, cancelPendingSpell,
+  } = useGameEngine({
     onAIAttack: async (attackerId, targetId) => {
       await playAttack(attackerId, targetId, '#ff0060')
     },
@@ -126,13 +129,23 @@ export function GameBoard() {
 
     const overId = over.id as string
 
-    // Drop sur le board joueur — jouer une carte
+    // Drop sur le board joueur — jouer une carte (unité ou sort)
     if (overId === 'player-board') {
       const instanceId = active.id as string
       const card = game.player.hand.find(c => c.instanceId === instanceId)
       if (!card) return
-      if (isSwapCard(card)) swap()
-      else playCard(instanceId)
+
+      if (isSwapCard(card)) {
+        swap()
+        return
+      }
+
+      if (isSpellCard(card)) {
+        playSpell(instanceId) // résout auto, ou arme pendingSpell si manual
+        return
+      }
+
+      playCard(instanceId)
       return
     }
 
@@ -210,32 +223,46 @@ export function GameBoard() {
     setTargetId(null)
   }
 
-  function handleEnemyCardClick(instanceId: string) {
-    if (!isPlayerTurn || !selectedId) return
-    void executeAttackOnTarget(instanceId)
-  }
-
-  function handleEnemyChampionClick(instanceId: string) {
+  function handleEnemyLegendClick(instanceId: string) {
     if (!isPlayerTurn || !selectedId) return
     void executeAttackOnTarget(instanceId)
   }
 
   function handleBoardClick(instanceId: string) {
     if (!isPlayerTurn) return
+
+    // Un sort attend une cible — priorité sur la logique d'attaque
+    if (pendingSpell) {
+      resolvePendingSpellTarget(instanceId)
+      return
+    }
+
     const card = game.player.board.find(c => c.instanceId === instanceId)
     if (!card || card.isExhausted) return
     setSelectedId(prev => prev === instanceId ? null : instanceId)
     setTargetId(null)
   }
 
+  function handleEnemyCardClick(instanceId: string) {
+    if (!isPlayerTurn) return
+
+    if (pendingSpell) {
+      resolvePendingSpellTarget(instanceId)
+      return
+    }
+
+    if (!selectedId) return
+    void executeAttackOnTarget(instanceId)
+  }
+
   async function handleAttack() {
     if (!selectedId || !game) return
 
     const targetCard = targetId
-      ? [...game.enemy.board, game.enemy.champion].find(c => c.instanceId === targetId)
+      ? [...game.enemy.board, game.enemy.legend].find(c => c.instanceId === targetId)
       : game.enemy.board.length > 0
         ? game.enemy.board[0]
-        : game.enemy.champion
+        : game.enemy.legend
 
     if (!targetCard) return
 
@@ -311,17 +338,30 @@ export function GameBoard() {
               </div>
             </div>
 
-            {/* Enemy Champion */}
+            {/* Pending Spell */}
+            {pendingSpell && (
+              <div className="flex items-center justify-between border border-[#b000ff] bg-[rgba(176,0,255,0.06)] px-3 py-2 text-[11px] tracking-[0.2em] text-[#b000ff]">
+                <span>⚡ {pendingSpell.data.name.toUpperCase()} — SELECT_TARGET</span>
+                <button
+                  onClick={cancelPendingSpell}
+                  className="text-[10px] text-[#b000ff] underline hover:text-white"
+                >
+                  CANCEL
+                </button>
+              </div>
+            )}
+
+            {/* Enemy Legend */}
             <div className="anim-boot flex justify-end gap-3 [animation-delay:80ms]">
               <div className="text-right">
-                <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#ff006055]">ENEMY.CHAMPION</div>
+                <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#ff006055]">ENEMY.LEGEND</div>
                 <div className="origin-top-right scale-[0.9] xl:scale-[0.86]">
                   <DroppableCard
-                    card={game.enemy.champion}
+                    card={game.enemy.legend}
                     onRegisterRef={registerRef}
-                    animateAs="champion"
-                    isTarget={targetId === game.enemy.champion.instanceId}
-                    onClick={handleEnemyChampionClick}
+                    animateAs="legend"
+                    isTarget={targetId === game.enemy.legend.instanceId}
+                    onClick={handleEnemyLegendClick}
                   />
                 </div>
               </div>
@@ -378,9 +418,9 @@ export function GameBoard() {
       {/* Right sidebar — desktop */}
       <aside className="anim-boot hidden min-h-0 flex-col rounded-sm border border-[#1c1c3a] bg-[#07070e] p-3 [animation-delay:320ms] xl:flex">
         <div className="mb-3">
-          <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#00e5ff55]">ALLY.CHAMPION</div>
+          <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#00e5ff55]">ALLY.LEGEND</div>
           <AnimatePresence>
-            <CardComponent card={game.player.champion} animateAs="champion" onRegisterRef={registerRef} />
+            <CardComponent card={game.player.legend} animateAs="legend" onRegisterRef={registerRef} />
           </AnimatePresence>
         </div>
 
@@ -435,9 +475,9 @@ export function GameBoard() {
       {/* Bottom bar — mobile */}
       <div className="anim-boot flex items-stretch gap-3 rounded-sm border border-[#1c1c3a] bg-[#07070e] p-2.5 xl:hidden">
         <div className="flex shrink-0 flex-col gap-1">
-          <div className="text-[8px] tracking-[0.3em] text-[#00e5ff55]">ALLY.CHAMPION</div>
+          <div className="text-[8px] tracking-[0.3em] text-[#00e5ff55]">ALLY.LEGEND</div>
           <AnimatePresence>
-            <CardComponent card={game.player.champion} animateAs="champion" onRegisterRef={registerRef} />
+            <CardComponent card={game.player.legend} animateAs="legend" onRegisterRef={registerRef} />
           </AnimatePresence>
         </div>
 

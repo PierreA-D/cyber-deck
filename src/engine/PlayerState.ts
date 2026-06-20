@@ -1,9 +1,9 @@
 import { type CardData, SWAP_CARD } from './CardData'
-import {  type CardInstance, createCardInstance, isSwapCard } from './CardInstance'
+import {  type CardInstance, createCardInstance, isSwapCard, isSpellCard } from './CardInstance'
 import { CardType } from './CardEnums'
 
 export const HAND_SIZE       = 4
-export const CHAMPION_MAX_HP = 5
+export const LEGEND_MAX_HP = 5
 export const DECK_SIZE       = 20
 
 export interface PlayerState {
@@ -15,7 +15,7 @@ export interface PlayerState {
   board:       CardInstance[]
   discard:     CardInstance[]
 
-  champion: CardInstance
+  legend: CardInstance
 
   hasSwappedThisTurn: boolean
 }
@@ -24,12 +24,12 @@ export function createPlayerState(
   playerId: string,
   deckA: CardData[],
   deckB: CardData[],
-  championData: CardData,
+  legendData: CardData,
 ): PlayerState {
-  const champion = createCardInstance({
-    ...championData,
-    type: CardType.Champion,
-    maxHp: CHAMPION_MAX_HP,
+  const legend = createCardInstance({
+    ...legendData,
+    type: CardType.Legend,
+    maxHp: LEGEND_MAX_HP,
   })
 
   const state: PlayerState = {
@@ -39,7 +39,7 @@ export function createPlayerState(
     hand:    [],
     board:   [],
     discard: [],
-    champion,
+    legend,
     hasSwappedThisTurn: false,
   }
 
@@ -87,6 +87,21 @@ export function playSwap(state: PlayerState): 'ok' | 'already_swapped' | 'no_swa
   return 'ok'
 }
 
+export function playSpellCard(
+  state: PlayerState,
+  instanceId: string,
+): CardInstance | null {
+  const idx = state.hand.findIndex(c => c.instanceId === instanceId)
+  if (idx === -1) return null
+
+  const card = state.hand[idx]
+  if (!isSpellCard(card)) return null
+
+  state.hand.splice(idx, 1)
+  state.discard.push(card)
+  return card
+}
+
 export function playCardToBoard(
   state: PlayerState,
   instanceId: string,
@@ -120,7 +135,7 @@ export function endTurn(state: PlayerState): 'drawn' | 'deck_empty' | 'hand_full
 
 export function isDefeated(state: PlayerState): boolean {
   return (
-    state.champion.currentHp <= 0 ||
+    state.legend.currentHp <= 0 ||
     (state.activeDeck.length === 0 && state.hand.length === 0)
   )
 }
