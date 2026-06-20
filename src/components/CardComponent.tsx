@@ -1,8 +1,10 @@
 import { useDraggable } from '@dnd-kit/core'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { type CardInstance, isSwapCard } from '../engine/CardInstance'
 import { CardType } from '../engine/CardEnums'
+import { getCardStyle, getArtUrl } from './cardStyle'
+import { CardPreview } from './CardPreview'
 
 interface Props {
   card: CardInstance
@@ -13,24 +15,6 @@ interface Props {
   animateAs?: 'hand' | 'board' | 'legend'
   onRegisterRef?: (instanceId: string, el: HTMLElement | null) => void
 }
-
-interface TypeStyle {
-  color: string
-  selBg: string
-  code:  string
-}
-
-const TYPE_STYLE: Record<CardType, TypeStyle> = {
-  [CardType.Warrior]:   { color: '#ff3d3d', selBg: 'rgba(255,61,61,0.14)',  code: 'UNIT.WAR' },
-  [CardType.Defender]:  { color: '#00e5ff', selBg: 'rgba(0,229,255,0.12)',  code: 'UNIT.DEF' },
-  [CardType.Healer]:    { color: '#00ff4c', selBg: 'rgba(0,255,76,0.12)',   code: 'UNIT.HLR' },
-  [CardType.Legend]:    { color: '#ffe000', selBg: 'rgba(255,224,0,0.10)',  code: 'SYS.CHAM' },
-  [CardType.Implant]:   { color: '#b000ff', selBg: 'rgba(176,0,255,0.12)',  code: 'SPL.IMP' },
-  [CardType.Overclock]: { color: '#ff8a00', selBg: 'rgba(255,138,0,0.12)',  code: 'SPL.OVR' },
-  [CardType.Protocole]: { color: '#00ffd0', selBg: 'rgba(0,255,208,0.12)',  code: 'SPL.PRT' },
-}
-
-const SWAP_STYLE: TypeStyle = { color: '#b000ff', selBg: 'rgba(176,0,255,0.14)', code: 'SYS.SWAP' }
 
 const HAND_ANIM = {
   initial:  { opacity: 0, y: 32, scale: 0.88 },
@@ -62,7 +46,8 @@ function getAnim(animateAs?: 'hand' | 'board' | 'legend') {
 export function CardComponent({ card, draggable, onClick, selected, disabled, animateAs, onRegisterRef }: Props) {
   const isSwap  = isSwapCard(card)
   const isChamp = card.data.type === CardType.Legend
-  const ts      = isSwap ? SWAP_STYLE : TYPE_STYLE[card.data.type]
+  const ts      = getCardStyle(card)
+  const artUrl  = getArtUrl(card)
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.instanceId,
@@ -73,8 +58,36 @@ export function CardComponent({ card, draggable, onClick, selected, disabled, an
   const canDrag = !!draggable && !disabled
   const [charging, setCharging] = useState(false)
 
+  // Preview agrandie (survol souris ou appui long tactile).
+  const [previewRect, setPreviewRect] = useState<DOMRect | null>(null)
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearPreviewTimer = () => {
+    if (previewTimer.current) {
+      clearTimeout(previewTimer.current)
+      previewTimer.current = null
+    }
+  }
+
+  const schedulePreview = (el: HTMLElement, delay: number) => {
+    clearPreviewTimer()
+    previewTimer.current = setTimeout(() => {
+      setPreviewRect(el.getBoundingClientRect())
+    }, delay)
+  }
+
+  const hidePreview = () => {
+    clearPreviewTimer()
+    setPreviewRect(null)
+  }
+
+  useEffect(() => () => clearPreviewTimer(), [])
+
   useEffect(() => {
-    if (isDragging) setCharging(false)
+    if (isDragging) {
+      setCharging(false)
+      hidePreview()
+    }
   }, [isDragging])
 
   const hpPct   = card.data.maxHp ? Math.max(0, card.currentHp / card.data.maxHp) : 1
@@ -90,7 +103,7 @@ export function CardComponent({ card, draggable, onClick, selected, disabled, an
   const cardStyle = {
     width:     isChamp ? 'clamp(82px, 22vw, 128px)' : 'clamp(70px, 19vw, 106px)',
     minHeight: isChamp ? 'clamp(104px, 26vw, 148px)' : 'clamp(90px, 22vw, 126px)',
-    background: selected ? ts.selBg : '#0c0c1e',
+    background: '#0c0c1e',
     border:    `1px solid ${selected ? '#ffffff' : ts.color}`,
     cursor:    draggable && !disabled ? 'grab' : disabled ? 'default' : 'pointer',
     opacity:   isDragging ? 0.15 : card.isExhausted ? 0.4 : 1,
@@ -114,15 +127,33 @@ export function CardComponent({ card, draggable, onClick, selected, disabled, an
       animate={anim.animate}
       exit={anim.exit}
       transition={anim.transition}
-      className={`relative flex select-none flex-col gap-1 rounded-sm px-2 py-1.5 text-[11px] text-[#c0c0e0] ${moveClass}`}
+      className={`relative isolate flex select-none flex-col gap-1 rounded-sm px-2 py-1.5 text-[11px] text-[#c0c0e0] ${moveClass}`}
       style={cardStyle}
       onClick={disabled ? undefined : onClick}
-      onPointerDown={canDrag ? () => setCharging(true) : undefined}
-      onPointerUp={canDrag ? () => setCharging(false) : undefined}
-      onPointerCancel={canDrag ? () => setCharging(false) : undefined}
-      onPointerLeave={canDrag ? () => setCharging(false) : undefined}
+      onPointerEnter={e => { if (e.pointerType === 'mouse') schedulePreview(e.currentTarget, 250) }}
+      onPointerDown={e => {
+        if (canDrag) setCharging(true)
+        if (e.pointerType !== 'mouse') schedulePreview(e.currentTarget, 450)
+      }}
+      onPointerMove={e => { if (e.pointerType !== 'mouse') hidePreview() }}
+      onPointerUp={e => { if (canDrag) setCharging(false); if (e.pointerType !== 'mouse') hidePreview() }}
+      onPointerCancel={() => { setCharging(false); hidePreview() }}
+      onPointerLeave={() => { setCharging(false); hidePreview() }}
       {...(draggable ? { ...listeners, ...attributes } : {})}
     >
+      {/* Fond / illustration (placeholder en attendant l'art) */}
+      <div className="absolute inset-0 -z-10 overflow-hidden rounded-sm">
+        <div
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(165deg, ${ts.color}1a 0%, #0b0b1c 62%)` }}
+        />
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${artUrl})` }} />
+        <div
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(180deg, rgba(8,8,18,0.45) 0%, rgba(8,8,18,0.12) 40%, rgba(8,8,18,0.82) 100%)' }}
+        />
+        {selected && <div className="absolute inset-0" style={{ background: ts.selBg }} />}
+      </div>
       {/* Indicateur de saisie (appui avant le drag) */}
       <AnimatePresence>
         {charging && !isDragging && (
@@ -204,6 +235,8 @@ export function CardComponent({ card, draggable, onClick, selected, disabled, an
           EXHSTD
         </motion.div>
       )}
+
+      {previewRect && !isDragging && <CardPreview card={card} anchor={previewRect} />}
     </motion.div>
   )
 }
