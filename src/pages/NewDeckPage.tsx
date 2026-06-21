@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/useAuth'
 import { useProtectedRoute } from '../hooks/useProtectedRoute'
+import { TYPE_STYLE } from '../components/cardStyle'
+import { CardPreview } from '../components/CardPreview'
+import { createCardInstance, type CardInstance } from '../engine/CardInstance'
+import type { CardData } from '../engine/CardData'
+import { CardType, DeckColor } from '../engine/CardEnums'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
@@ -65,12 +70,46 @@ export function NewDeckPage() {
     )
   }
 
-  const TYPE_COLORS: Record<string, string> = {
-    WARRIOR:  'text-red-400 border-red-900',
-    DEFENDER: 'text-blue-400 border-blue-900',
-    HEALER:   'text-green-400 border-green-900',
-    LEGEND:   'text-yellow-400 border-yellow-900',
+  // Adapte les cartes de l'API en instances, uniquement pour alimenter la preview.
+  const instances = useMemo<Map<number, CardInstance>>(() => {
+    const map = new Map<number, CardInstance>()
+    for (const card of cards) {
+      const data: CardData = {
+        id: String(card.id),
+        name: card.name,
+        type: card.type.toLowerCase() as CardType,
+        color: card.color as DeckColor,
+        attack: card.attack,
+        maxHp: card.hp,
+        healAmount: card.heal,
+      }
+      map.set(card.id, createCardInstance(data))
+    }
+    return map
+  }, [cards])
+
+  // Preview flottante : survol souris (délai court) ou appui long tactile.
+  const [preview, setPreview] = useState<{ card: CardInstance; rect: DOMRect } | null>(null)
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearPreviewTimer = () => {
+    if (previewTimer.current) {
+      clearTimeout(previewTimer.current)
+      previewTimer.current = null
+    }
   }
+  const schedulePreview = (inst: CardInstance, el: HTMLElement, delay: number) => {
+    clearPreviewTimer()
+    previewTimer.current = setTimeout(() => {
+      setPreview({ card: inst, rect: el.getBoundingClientRect() })
+    }, delay)
+  }
+  const hidePreview = () => {
+    clearPreviewTimer()
+    setPreview(null)
+  }
+
+  useEffect(() => () => clearPreviewTimer(), [])
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] font-mono text-cyan-400 p-10">
@@ -168,32 +207,61 @@ export function NewDeckPage() {
 
           <div className="grid grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-2">
             {cards.map(card => {
+              const inst = instances.get(card.id)
               const isSelected = selected.includes(card.id)
-              const count      = selected.filter(id => id === card.id).length
+              const count = selected.filter(id => id === card.id).length
+              const style = TYPE_STYLE[card.type.toLowerCase() as CardType]
+              const artUrl = `https://picsum.photos/seed/${card.id}/240/320`
 
               return (
                 <div
                   key={card.id}
                   onClick={() => toggleCard(card.id)}
-                  className={`border p-4 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-cyan-400 bg-cyan-400/5'
-                      : 'border-zinc-800 hover:border-zinc-600'
-                  } ${TYPE_COLORS[card.type] ?? ''}`}
+                  onPointerEnter={e => { if (inst && e.pointerType === 'mouse') schedulePreview(inst, e.currentTarget, 200) }}
+                  onPointerLeave={hidePreview}
+                  onPointerDown={e => { if (inst && e.pointerType !== 'mouse') schedulePreview(inst, e.currentTarget, 450) }}
+                  onPointerMove={e => { if (e.pointerType !== 'mouse') hidePreview() }}
+                  onPointerUp={e => { if (e.pointerType !== 'mouse') hidePreview() }}
+                  onPointerCancel={hidePreview}
+                  style={{
+                    borderColor: isSelected ? '#ffffff' : style?.color,
+                    boxShadow: isSelected
+                      ? `0 0 14px ${style?.color}88`
+                      : `0 0 6px ${style?.color}22`,
+                  }}
+                  className="relative overflow-hidden border p-4 cursor-pointer transition-all hover:-translate-y-0.5"
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm tracking-[1px]">{card.name}</p>
-                    {count > 0 && (
-                      <span className="text-xs border border-cyan-400 text-cyan-400 px-1">
-                        ×{count}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] tracking-[2px] opacity-60">{card.type.toUpperCase()}</p>
-                  <div className="flex gap-3 mt-2 text-xs">
-                    {card.attack !== undefined && <span>⚔ {card.attack}</span>}
-                    {card.hp     !== undefined && <span>❤ {card.hp}</span>}
-                    {card.heal   !== undefined && <span>💚 {card.heal}</span>}
+                  {/* Illustration en fond + dégradé pour la lisibilité */}
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${artUrl})` }}
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: 'linear-gradient(180deg, rgba(8,8,18,0.5) 0%, rgba(8,8,18,0.2) 40%, rgba(8,8,18,0.85) 100%)' }}
+                  />
+                  {isSelected && (
+                    <div className="absolute inset-0" style={{ background: style?.selBg }} />
+                  )}
+
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-sm tracking-[1px] text-white">{card.name}</p>
+                      {count > 0 && (
+                        <span className="text-xs border border-cyan-400 text-cyan-400 px-1 bg-black/60">×{count}</span>
+                      )}
+                    </div>
+                    <p
+                      className="text-[10px] tracking-[2px]"
+                      style={{ color: style?.color }}
+                    >
+                      {card.type.toUpperCase()}
+                    </p>
+                    <div className="flex gap-3 mt-2 text-xs text-zinc-200">
+                      {card.attack !== undefined && <span>⚔ {card.attack}</span>}
+                      {card.hp     !== undefined && <span>❤ {card.hp}</span>}
+                      {card.heal   !== undefined && <span>💚 {card.heal}</span>}
+                    </div>
                   </div>
                 </div>
               )
@@ -201,6 +269,8 @@ export function NewDeckPage() {
           </div>
         </div>
       </div>
+
+      {preview && <CardPreview card={preview.card} anchor={preview.rect} />}
     </div>
   )
 }

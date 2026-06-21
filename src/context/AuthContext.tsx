@@ -1,5 +1,7 @@
-import { useState, useCallback, type ReactNode } from 'react'
+import { useState, useCallback, type ReactNode, useEffect } from 'react'
 import { AuthContext, type User } from './AuthContextValue'
+import { setUnauthorizedHandler } from '../lib/apiClient'
+import { userSchema } from '../lib/schemas'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(
@@ -7,7 +9,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('user')
-    return stored ? JSON.parse(stored) : null
+    if (!stored) return null
+    try {
+      const parsed = userSchema.safeParse(JSON.parse(stored))
+      return parsed.success ? parsed.data : null
+    } catch {
+      return null
+    }
   })
 
   const login = useCallback((newToken: string, newUser: User) => {
@@ -23,6 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null)
     setUser(null)
   }, [])
+
+  useEffect(() => {
+    setUnauthorizedHandler(logout)
+  }, [logout])
 
   return (
     <AuthContext.Provider value={{

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useAuth } from '../context/useAuth'
+import { apiFetch } from '../lib/apiClient'
+import { userSchema, loginResponseSchema } from '../lib/schemas'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
@@ -16,33 +18,22 @@ export function LoginPage() {
   async function handleSubmit() {
     setError(null)
     setLoading(true)
-
     try {
-      // 1. Login → récupère le token
-      const loginRes = await fetch(`${API}/api/auth/login`, {
+      const { token } = await apiFetch('/api/auth/login', loginResponseSchema, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       })
 
-      if (!loginRes.ok) {
-        setError('Invalid credentials.')
-        return
-      }
+      const user = await apiFetch('/api/auth/me', userSchema, { token })
 
-      const { token } = await loginRes.json()
-
-      // 2. Récupère le profil utilisateur
-      const meRes = await fetch(`${API}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      const user = await meRes.json()
       login(token, user)
       navigate({ to: '/dashboard' })
-
-    } catch {
-      setError('Connection error. Is the server running?')
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError('Invalid credentials.')
+      } else {
+        setError('Connection error. Is the server running?')
+      }
     } finally {
       setLoading(false)
     }

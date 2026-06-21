@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
-
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+import { apiFetch } from '../lib/apiClient'
+import { userSchema } from '../lib/schemas'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -15,23 +15,14 @@ export function RegisterPage() {
   async function handleSubmit() {
     setError(null)
     setLoading(true)
-
     try {
-      const res = await fetch(`${API}/api/auth/register`, {
+      await apiFetch('/api/auth/register', userSchema, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
       })
-
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error ?? 'Registration failed.')
-        return
-      }
-
       navigate({ to: '/login' })
-    } catch {
-      setError('Connection error. Is the server running?')
+    } catch (err) {
+      setError('Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }
