@@ -1,4 +1,4 @@
-import { type CardInstance, isSwapCard } from '../engine/CardInstance'
+import { type CardInstance } from '../engine/CardInstance'
 import { CardType } from '../engine/CardEnums'
 
 export interface TypeStyle {
@@ -17,10 +17,8 @@ export const TYPE_STYLE: Record<CardType, TypeStyle> = {
   [CardType.Protocole]: { color: '#00ffd0', selBg: 'rgba(0,255,208,0.12)',  code: 'SPL.PRT' },
 }
 
-export const SWAP_STYLE: TypeStyle = { color: '#b000ff', selBg: 'rgba(176,0,255,0.14)', code: 'SYS.SWAP' }
-
 export function getCardStyle(card: CardInstance): TypeStyle {
-  return isSwapCard(card) ? SWAP_STYLE : TYPE_STYLE[card.data.type]
+  return TYPE_STYLE[card.data.type]
 }
 
 // Illustration : utilise artKey si présent, sinon une image placeholder stable (seed = id).

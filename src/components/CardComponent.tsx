@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core'
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { type CardInstance, isSwapCard } from '../engine/CardInstance'
+import { type CardInstance } from '../engine/CardInstance'
 import { CardType } from '../engine/CardEnums'
 import { getCardStyle, getArtUrl } from './cardStyle'
 import { CardPreview } from './CardPreview'
@@ -44,7 +44,6 @@ function getAnim(animateAs?: 'hand' | 'board' | 'legend') {
 }
 
 export function CardComponent({ card, draggable, onClick, selected, disabled, animateAs, onRegisterRef }: Props) {
-  const isSwap  = isSwapCard(card)
   const isChamp = card.data.type === CardType.Legend
   const ts      = getCardStyle(card)
   const artUrl  = getArtUrl(card)
@@ -208,9 +207,6 @@ export function CardComponent({ card, draggable, onClick, selected, disabled, an
             <span className="text-[9px] tracking-[1px] text-[#36366a]">HLR</span>
             <span className="text-[#00ff4c]">+{card.data.healAmount}</span>
           </div>
-        )}
-        {isSwap && (
-          <div className="mt-0.5 text-[9px] tracking-[1px] text-[#b000ff]">DECK_SWAP</div>
         )}
       </div>
 

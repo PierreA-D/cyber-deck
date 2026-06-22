@@ -61,11 +61,20 @@ export function checkWinCondition(state: GameState): GameResult {
   return { status: 'ongoing' }
 }
 
+export function canAttack(card: CardInstance): boolean {
+  return card.data.type === CardType.Warrior
+}
+
 export function resolveAttack(
   attacker: CardInstance,
   target:   CardInstance,
   state:    GameState,
 ): number {
+  if (!canAttack(attacker)) {
+    log(state, 'attack', `${attacker.data.name} cannot attack.`)
+    return 0
+  }
+
   if (attacker.isExhausted) {
     log(state, 'attack', `${attacker.data.name} is exhausted and cannot attack.`)
     return 0
@@ -220,19 +229,34 @@ export function resolveSpell(
   }
 }
 
-export function getAttackTarget(attackerOwner: 'player' | 'enemy', state: GameState): CardInstance | null {
+export function getValidAttackTargets(
+  attackerOwner: 'player' | 'enemy',
+  state: GameState,
+): CardInstance[] {
   const targetState = attackerOwner === 'player' ? state.enemy : state.player
   const board = targetState.board.filter(isAlive)
 
-  if (board.length === 0) return targetState.legend
+  // Les Defenders font office de taunt : tant qu'il en reste, on doit les viser.
+  const defenders = board.filter(c => c.data.type === CardType.Defender)
+  if (defenders.length > 0) return defenders
 
-  const defender = board.find(c => c.data.type === CardType.Defender)
-  if (defender) return defender
+  // Sinon, le Warrior peut cibler les Healers ennemis ou le champion.
+  // Les Warriors ennemis ne sont jamais ciblables.
+  const healers = board.filter(c => c.data.type === CardType.Healer)
+  return [...healers, targetState.legend]
+}
 
-  const warrior = board.find(c => c.data.type === CardType.Warrior)
-  if (warrior) return warrior
+export function isValidAttackTarget(
+  attackerOwner: 'player' | 'enemy',
+  target: CardInstance,
+  state: GameState,
+): boolean {
+  return getValidAttackTargets(attackerOwner, state).includes(target)
+}
 
-  return board[0]
+export function getAttackTarget(attackerOwner: 'player' | 'enemy', state: GameState): CardInstance | null {
+  const targets = getValidAttackTargets(attackerOwner, state)
+  return targets[0] ?? null
 }
 
 export function cleanupBoard(playerState: PlayerState): void {

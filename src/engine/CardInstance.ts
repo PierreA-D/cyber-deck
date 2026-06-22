@@ -33,10 +33,6 @@ export function isAlive(card: CardInstance): boolean {
   return card.currentHp > 0
 }
 
-export function isSwapCard(card: CardInstance): boolean {
-  return card.data.id === 'swap'
-}
-
 export function getEffectiveAttack(card: CardInstance): number {
   return Math.max(0, (card.data.attack ?? 0) + card.attackBuff)
 }

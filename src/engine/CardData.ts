@@ -22,11 +22,3 @@ export interface CardData {
   artKey?: string
   spellEffect?: SpellEffect
 }
-
-export const SWAP_CARD: CardData = {
-  id: 'swap',
-  name: 'Swap',
-  type: CardType.Warrior,
-  color: DeckColor.Red,
-  description: 'Exchange your active deck with your passive deck.',
-}

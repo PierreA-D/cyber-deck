@@ -1,5 +1,5 @@
-import { type CardData, SWAP_CARD } from './CardData'
-import {  type CardInstance, createCardInstance, isSwapCard, isSpellCard } from './CardInstance'
+import { type CardData } from './CardData'
+import {  type CardInstance, createCardInstance, isSpellCard } from './CardInstance'
 import { CardType } from './CardEnums'
 
 export const HAND_SIZE       = 4
@@ -48,8 +48,7 @@ export function createPlayerState(
 }
 
 function drawOpeningHand(state: PlayerState): void {
-  state.hand.push(createCardInstance(SWAP_CARD))
-  for (let i = 0; i < HAND_SIZE - 1; i++) {
+  for (let i = 0; i < HAND_SIZE; i++) {
     const drawn = drawFromActiveDeck(state)
     if (drawn) state.hand.push(drawn)
   }
@@ -70,14 +69,8 @@ export function drawCard(state: PlayerState): 'drawn' | 'deck_empty' | 'hand_ful
   return 'drawn'
 }
 
-export function playSwap(state: PlayerState): 'ok' | 'already_swapped' | 'no_swap_card' {
+export function playSwap(state: PlayerState): 'ok' | 'already_swapped' {
   if (state.hasSwappedThisTurn) return 'already_swapped'
-
-  const swapIndex = state.hand.findIndex(isSwapCard)
-  if (swapIndex === -1) return 'no_swap_card'
-
-  const [swapCard] = state.hand.splice(swapIndex, 1)
-  state.discard.push(swapCard)
 
   const temp        = state.activeDeck
   state.activeDeck  = state.passiveDeck
@@ -105,12 +98,11 @@ export function playSpellCard(
 export function playCardToBoard(
   state: PlayerState,
   instanceId: string,
-): 'ok' | 'not_in_hand' | 'is_swap_card' {
+): 'ok' | 'not_in_hand' {
   const idx = state.hand.findIndex(c => c.instanceId === instanceId)
   if (idx === -1) return 'not_in_hand'
 
   const card = state.hand[idx]
-  if (isSwapCard(card)) return 'is_swap_card'
 
   state.hand.splice(idx, 1)
   state.board.push(card)
@@ -130,6 +122,8 @@ export function endTurn(state: PlayerState): 'drawn' | 'deck_empty' | 'hand_full
   for (const card of state.board) {
     card.isExhausted = false
   }
+  // Pioche de 2 cartes par tour (bornée par HAND_SIZE).
+  drawCard(state)
   return drawCard(state)
 }
 

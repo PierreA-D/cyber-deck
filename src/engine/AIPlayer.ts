@@ -22,9 +22,7 @@ function playAIHand(state: GameState): void {
   const priority = [CardType.Defender, CardType.Warrior, CardType.Healer]
 
   for (const type of priority) {
-    const cards = state.enemy.hand.filter(
-      c => c.data.type === type && c.data.id !== 'swap'
-    )
+    const cards = state.enemy.hand.filter(c => c.data.type === type)
     for (const card of cards) {
       playCardToBoard(state.enemy, card.instanceId)
     }
@@ -71,7 +69,7 @@ function getBestHealTarget(state: GameState) {
 
 function attackWithAI(state: GameState): void {
   const attackers = state.enemy.board.filter(
-    c => !c.isExhausted && isAlive(c) && c.data.type !== CardType.Healer
+    c => !c.isExhausted && isAlive(c) && c.data.type === CardType.Warrior
   )
 
   for (const attacker of attackers) {

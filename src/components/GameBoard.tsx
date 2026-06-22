@@ -6,7 +6,8 @@ import { BoardZone } from './BoardZone'
 import { PlayerHand } from './PlayerHand'
 import { CardComponent } from './CardComponent'
 import { GamePhase } from '../engine/GameEngine'
-import { isSwapCard, isSpellCard } from '../engine/CardInstance'
+import { CardType } from '../engine/CardEnums'
+import { isSpellCard, isAlive } from '../engine/CardInstance'
 import { AnimatePresence } from 'motion/react'
 import { useAttackAnimation } from '../hooks/useAttackAnimation'
 import { DroppableCard } from './DroppableCard'
@@ -42,7 +43,7 @@ export function GameBoard() {
 
   // 2. useGameEngine qui utilise playAttack
   const {
-    game, loading, error, playCard, swap, attack, endTurn, restart, saveGame,
+    game, loading, error, playCard, swap, heal, attack, endTurn, restart, saveGame,
     playSpell, pendingSpell, resolvePendingSpellTarget, cancelPendingSpell,
   } = useGameEngine({
     onAIAttack: async (attackerId, targetId) => {
@@ -135,11 +136,6 @@ export function GameBoard() {
       const card = game.player.hand.find(c => c.instanceId === instanceId)
       if (!card) return
 
-      if (isSwapCard(card)) {
-        swap()
-        return
-      }
-
       if (isSpellCard(card)) {
         playSpell(instanceId) // résout auto, ou arme pendingSpell si manual
         return
@@ -215,6 +211,7 @@ export function GameBoard() {
 
   async function executeAttackOnTarget(targetInstanceId: string) {
     if (!selectedId) return
+    if (selectedCard?.data.type !== CardType.Warrior) return
 
     setTargetId(targetInstanceId)
     await playAttack(selectedId, targetInstanceId, '#ff3d3d')
@@ -225,7 +222,29 @@ export function GameBoard() {
 
   function handleEnemyLegendClick(instanceId: string) {
     if (!isPlayerTurn || !selectedId) return
+    if (selectedCard?.data.type !== CardType.Warrior) return
     void executeAttackOnTarget(instanceId)
+  }
+
+  // Soigne une cible alliée (unité ou champion) avec le Healer sélectionné.
+  function healSelectedTarget(targetInstanceId: string): boolean {
+    if (!selectedId || selectedCard?.data.type !== CardType.Healer) return false
+    if (targetInstanceId === selectedId) return false
+
+    const allies = [...game.player.board, game.player.legend]
+    const target = allies.find(c => c.instanceId === targetInstanceId)
+    if (!target || !isAlive(target)) return false
+    if (target.data.maxHp === undefined || target.currentHp >= target.data.maxHp) return false
+
+    heal(selectedId, targetInstanceId)
+    setSelectedId(null)
+    setTargetId(null)
+    return true
+  }
+
+  function handleAllyLegendClick() {
+    if (!isPlayerTurn) return
+    healSelectedTarget(game.player.legend.instanceId)
   }
 
   function handleBoardClick(instanceId: string) {
@@ -237,8 +256,15 @@ export function GameBoard() {
       return
     }
 
+    // Un Healer est sélectionné — on tente de soigner l'allié cliqué
+    if (selectedCard?.data.type === CardType.Healer && healSelectedTarget(instanceId)) {
+      return
+    }
+
     const card = game.player.board.find(c => c.instanceId === instanceId)
     if (!card || card.isExhausted) return
+    // Seuls les Warriors (attaque) et Healers (soin) peuvent être sélectionnés.
+    if (card.data.type !== CardType.Warrior && card.data.type !== CardType.Healer) return
     setSelectedId(prev => prev === instanceId ? null : instanceId)
     setTargetId(null)
   }
@@ -255,27 +281,16 @@ export function GameBoard() {
     void executeAttackOnTarget(instanceId)
   }
 
-  async function handleAttack() {
-    if (!selectedId || !game) return
-
-    const targetCard = targetId
-      ? [...game.enemy.board, game.enemy.legend].find(c => c.instanceId === targetId)
-      : game.enemy.board.length > 0
-        ? game.enemy.board[0]
-        : game.enemy.legend
-
-    if (!targetCard) return
-
-    await executeAttackOnTarget(targetCard.instanceId)
-  }
-
   const statusColor = isGameOver ? '#ff3d3d' : isPlayerTurn ? '#00e5ff' : '#ff0060'
   const statusText  = isGameOver
     ? game.result.status.replace('_', '/').toUpperCase()
     : isPlayerTurn ? 'PLAYER_TURN' : 'AI_PROC...'
 
   const selectedCard = game.player.board.find(c => c.instanceId === selectedId)
-  const strikeReady  = !!selectedId && isPlayerTurn && !selectedCard?.isExhausted
+  const isWarriorSelected = selectedCard?.data.type === CardType.Warrior
+  const isHealerSelected  = selectedCard?.data.type === CardType.Healer
+  const strikeReady  = !!selectedId && isPlayerTurn && isWarriorSelected && !selectedCard?.isExhausted
+  const swapReady    = isPlayerTurn && !game.player.hasSwappedThisTurn
 
   const activeDraggedCard = activeDragId
     ? game.player.hand.find(c => c.instanceId === activeDragId)
@@ -420,22 +435,22 @@ export function GameBoard() {
         <div className="mb-3">
           <div className="mb-1.5 text-[9px] tracking-[0.3em] text-[#00e5ff55]">ALLY.LEGEND</div>
           <AnimatePresence>
-            <CardComponent card={game.player.legend} animateAs="legend" onRegisterRef={registerRef} />
+            <CardComponent card={game.player.legend} animateAs="legend" onRegisterRef={registerRef} selected={isHealerSelected} onClick={handleAllyLegendClick} />
           </AnimatePresence>
         </div>
 
         <div className="flex flex-col gap-2.5 border-t border-[#1c1c3a] pt-3">
           <button
-            onClick={handleAttack}
-            disabled={!strikeReady}
-            className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3d3d]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
+            onClick={swap}
+            disabled={!swapReady}
+            className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#b000ff]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
             style={{
-              color:     strikeReady ? '#ff3d3d' : '#2a2a5a',
-              border:    `1px solid ${strikeReady ? '#ff3d3d' : '#1c1c3a'}`,
-              boxShadow: strikeReady ? '0 0 10px rgba(255,61,61,0.35)' : 'none',
+              color:     swapReady ? '#b000ff' : '#2a2a5a',
+              border:    `1px solid ${swapReady ? '#b000ff' : '#1c1c3a'}`,
+              boxShadow: swapReady ? '0 0 10px rgba(176,0,255,0.35)' : 'none',
             }}
           >
-            [STRIKE]{selectedId ? ' // EXEC' : ' // IDLE'}
+            [SWAP_DECK]
           </button>
 
           <button
@@ -477,22 +492,22 @@ export function GameBoard() {
         <div className="flex shrink-0 flex-col gap-1">
           <div className="text-[8px] tracking-[0.3em] text-[#00e5ff55]">ALLY.LEGEND</div>
           <AnimatePresence>
-            <CardComponent card={game.player.legend} animateAs="legend" onRegisterRef={registerRef} />
+            <CardComponent card={game.player.legend} animateAs="legend" onRegisterRef={registerRef} selected={isHealerSelected} onClick={handleAllyLegendClick} />
           </AnimatePresence>
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
           <button
-            onClick={handleAttack}
-            disabled={!strikeReady}
-            className="w-full cursor-pointer bg-transparent px-3 py-2.5 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ff3d3d]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
+            onClick={swap}
+            disabled={!swapReady}
+            className="w-full cursor-pointer bg-transparent px-3 py-2.5 text-[11px] uppercase tracking-[0.2em] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,color,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#b000ff]/70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
             style={{
-              color:     strikeReady ? '#ff3d3d' : '#2a2a5a',
-              border:    `1px solid ${strikeReady ? '#ff3d3d' : '#1c1c3a'}`,
-              boxShadow: strikeReady ? '0 0 10px rgba(255,61,61,0.35)' : 'none',
+              color:     swapReady ? '#b000ff' : '#2a2a5a',
+              border:    `1px solid ${swapReady ? '#b000ff' : '#1c1c3a'}`,
+              boxShadow: swapReady ? '0 0 10px rgba(176,0,255,0.35)' : 'none',
             }}
           >
-            [STRIKE]{selectedId ? ' // EXEC' : ' // IDLE'}
+            [SWAP_DECK]
           </button>
 
           <button

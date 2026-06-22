@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
-  type GameState, createGameState, resolveAttack, getAttackTarget,
+  type GameState, createGameState, resolveAttack, getAttackTarget, getValidAttackTargets, resolveHeal,
   endPlayerTurn, endEnemyTurn, cleanupBoard,
   resolveSpell, resolveAutoTarget, type SpellTarget,
 } from '../engine/GameEngine'
@@ -96,6 +96,18 @@ export function useGameEngine(options?: UseGameEngineOptions) {
     update(g => { playSwap(g.player) })
   }, [update])
 
+  const heal = useCallback((healerInstanceId: string, targetInstanceId: string) => {
+    update(g => {
+      const healer = g.player.board.find(c => c.instanceId === healerInstanceId)
+      if (!healer) return
+
+      const target = [...g.player.board, g.player.legend].find(c => c.instanceId === targetInstanceId)
+      if (!target) return
+
+      resolveHeal(healer, target, g)
+    })
+  }, [update])
+
   // Tente de jouer une carte Sort.
   // Retourne true si la carte attend un clic du joueur sur une cible (single_card manual).
   // Sinon résout immédiatement (champion, board, ou single_card auto).
@@ -158,7 +170,10 @@ export function useGameEngine(options?: UseGameEngineOptions) {
         ? [...g.enemy.board, g.enemy.legend].find(c => c.instanceId === targetInstanceId)
         : undefined
 
-      const target = explicitTarget ?? getAttackTarget('player', g)
+      const validTargets = getValidAttackTargets('player', g)
+      const target = (explicitTarget && validTargets.includes(explicitTarget))
+        ? explicitTarget
+        : getAttackTarget('player', g)
       if (!target) return
 
       resolveAttack(attacker, target, g)
@@ -199,7 +214,7 @@ export function useGameEngine(options?: UseGameEngineOptions) {
 
   return {
     game, loading, error,
-    playCard, swap, attack, endTurn, restart, saveGame,
+    playCard, swap, heal, attack, endTurn, restart, saveGame,
     playSpell, pendingSpell, resolvePendingSpellTarget, cancelPendingSpell,
   }
 }
