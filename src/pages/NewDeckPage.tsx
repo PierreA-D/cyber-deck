@@ -65,9 +65,11 @@ export function NewDeckPage() {
   })
 
   function toggleCard(id: number) {
-    setSelected(prev =>
-      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
-    )
+    setSelected(prev => {
+      if (prev.includes(id)) return prev.filter(c => c !== id)
+      if (prev.length >= 10) return prev
+      return [...prev, id]
+    })
   }
 
   // Adapte les cartes de l'API en instances, uniquement pour alimenter la preview.
@@ -149,7 +151,7 @@ export function NewDeckPage() {
           <div>
             <p className="text-[11px] tracking-[2px] text-zinc-600 mb-2">COLOR</p>
             <div className="flex gap-3">
-              {['Red', 'Green', 'Blue'].map(c => (
+              {Object.values(DeckColor).map(c => (
                 <button
                   key={c}
                   onClick={() => { setColor(c); setSelected([]) }}
@@ -180,17 +182,19 @@ export function NewDeckPage() {
 
           <div className="border border-zinc-800 p-4">
             <p className="text-[11px] tracking-[2px] text-zinc-600 mb-2">SELECTED</p>
-            <p className="text-2xl">{selected.length} <span className="text-sm text-zinc-600">/ 20 CARDS</span></p>
-            {selected.length < 20 && (
+            <p className="text-2xl">{selected.length} <span className="text-sm text-zinc-600">/ 10 CARDS</span></p>
+            {selected.length < 10 ? (
               <p className="text-[11px] text-yellow-500 mt-1">
-                {20 - selected.length} MORE NEEDED
+                {10 - selected.length} MORE NEEDED
               </p>
+            ) : (
+              <p className="text-[11px] text-green-500 mt-1">MAX REACHED — DECK COMPLETE</p>
             )}
           </div>
 
           <button
             onClick={() => createMutation.mutate()}
-            disabled={!name || selected.length !== 20 || createMutation.isPending}
+            disabled={!name || selected.length !== 10 || createMutation.isPending}
             className="py-4 border border-cyan-400 text-cyan-400 text-sm tracking-[3px] hover:bg-cyan-400 hover:text-[#0a0a0f] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {createMutation.isPending ? 'SAVING...' : 'SAVE DECK'}
@@ -212,6 +216,7 @@ export function NewDeckPage() {
               const count = selected.filter(id => id === card.id).length
               const style = TYPE_STYLE[card.type.toLowerCase() as CardType]
               const artUrl = `https://picsum.photos/seed/${card.id}/240/320`
+              const locked = !isSelected && selected.length >= 10
 
               return (
                 <div
@@ -229,7 +234,11 @@ export function NewDeckPage() {
                       ? `0 0 14px ${style?.color}88`
                       : `0 0 6px ${style?.color}22`,
                   }}
-                  className="relative overflow-hidden border p-4 cursor-pointer transition-all hover:-translate-y-0.5"
+                  className={`relative overflow-hidden border p-4 transition-all ${
+                    locked
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'cursor-pointer hover:-translate-y-0.5'
+                  }`}
                 >
                   {/* Illustration en fond + dégradé pour la lisibilité */}
                   <div

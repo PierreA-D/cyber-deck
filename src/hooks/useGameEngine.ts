@@ -13,11 +13,6 @@ import { useAuth } from '../context/useAuth'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
-function toDeckColor(color: string): DeckColor {
-  const found = Object.values(DeckColor).find(v => v.toLowerCase() === color.toLowerCase())
-  return found ?? DeckColor.Red
-}
-
 function buildGameFromDecks(activeDecks: Deck[]): GameState {
   if (activeDecks.length < 2) {
     throw new Error('You need exactly 2 active decks to play.')
@@ -28,17 +23,14 @@ function buildGameFromDecks(activeDecks: Deck[]): GameState {
 
   const isLegend = (c: Deck['cards'][number]) => c.type.toLowerCase() === 'legend'
 
-  const legendA = sourceA.find(isLegend)
-  const legendB = sourceB.find(isLegend)
-
-  if (!legendA) throw new Error(`Deck "${activeDecks[0].name}" has no Legend card.`)
-  if (!legendB) throw new Error(`Deck "${activeDecks[1].name}" has no Legend card.`)
+  const legends = [...sourceA, ...sourceB].filter(isLegend)
+  if (legends.length === 0) throw new Error(`You need exactly 1 legend across your decks.`)
+  if (legends.length > 1) throw new Error(`You can only have 1 legend across your decks.`)
 
   const deckA = sourceA.filter(c => !isLegend(c)).map(resolveDeckCard)
   const deckB = sourceB.filter(c => !isLegend(c)).map(resolveDeckCard)
 
-  const playerColor  = toDeckColor(activeDecks[0].color)
-  const playerLegend = resolveDeckCard(legendA)
+  const playerLegend = resolveDeckCard(legends[0])
 
   const player = createPlayerState('player', shuffle(deckA), shuffle(deckB), playerLegend)
   const enemy  = createPlayerState(

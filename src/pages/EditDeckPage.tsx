@@ -3,6 +3,8 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/useAuth'
 import { useProtectedRoute } from '../hooks/useProtectedRoute'
+import { TYPE_STYLE } from '../components/cardStyle'
+import { CardType, DeckColor } from '../engine/CardEnums'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
@@ -113,18 +115,13 @@ export function EditDeckPage() {
   })
 
   function toggleCard(cardId: number) {
-    updateDraft(prev => ({
-      ...prev,
-      selected: prev.selected.includes(cardId)
-        ? prev.selected.filter(c => c !== cardId)
-        : [...prev.selected, cardId],
-    }))
-  }
-
-  const TYPE_COLORS: Record<string, string> = {
-    Warrior:  'text-red-400 border-red-900',
-    Defender: 'text-blue-400 border-blue-900',
-    Healer:   'text-green-400 border-green-900',
+    updateDraft(prev => {
+      if (prev.selected.includes(cardId)) {
+        return { ...prev, selected: prev.selected.filter(c => c !== cardId) }
+      }
+      if (prev.selected.length >= 10) return prev
+      return { ...prev, selected: [...prev.selected, cardId] }
+    })
   }
 
   if (deckLoading) {
@@ -173,7 +170,7 @@ export function EditDeckPage() {
           <div>
             <p className="text-[11px] tracking-[2px] text-zinc-600 mb-2">COLOR</p>
             <div className="flex gap-3">
-              {['Red', 'Green', 'Blue'].map(c => (
+              {Object.values(DeckColor).map(c => (
                 <button
                   key={c}
                   onClick={() => updateDraft(prev => ({ ...prev, color: c, selected: [] }))}
@@ -205,18 +202,20 @@ export function EditDeckPage() {
           <div className="border border-zinc-800 p-4">
             <p className="text-[11px] tracking-[2px] text-zinc-600 mb-2">SELECTED</p>
             <p className="text-2xl">
-              {selected.length} <span className="text-sm text-zinc-600">/ 20 CARDS</span>
+              {selected.length} <span className="text-sm text-zinc-600">/ 10 CARDS</span>
             </p>
-            {selected.length < 20 && (
+            {selected.length < 10 ? (
               <p className="text-[11px] text-yellow-500 mt-1">
-                {20 - selected.length} MORE NEEDED
+                {10 - selected.length} MORE NEEDED
               </p>
+            ) : (
+              <p className="text-[11px] text-green-500 mt-1">MAX REACHED — DECK COMPLETE</p>
             )}
           </div>
 
           <button
             onClick={() => updateMutation.mutate()}
-            disabled={!name || selected.length !== 20 || updateMutation.isPending}
+            disabled={!name || selected.length !== 10 || updateMutation.isPending}
             className="py-4 border border-cyan-400 text-cyan-400 text-sm tracking-[3px] hover:bg-cyan-400 hover:text-[#0a0a0f] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {updateMutation.isPending ? 'SAVING...' : 'UPDATE DECK'}
@@ -235,30 +234,59 @@ export function EditDeckPage() {
             {cards.map(card => {
               const isSelected = selected.includes(card.id)
               const count      = selected.filter(cid => cid === card.id).length
+              const style      = TYPE_STYLE[card.type.toLowerCase() as CardType]
+              const artUrl     = `https://picsum.photos/seed/${card.id}/240/320`
+              const locked     = !isSelected && selected.length >= 10
 
               return (
                 <div
                   key={card.id}
                   onClick={() => toggleCard(card.id)}
-                  className={`border p-4 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-cyan-400 bg-cyan-400/5'
-                      : 'border-zinc-800 hover:border-zinc-600'
-                  } ${TYPE_COLORS[card.type] ?? ''}`}
+                  style={{
+                    borderColor: isSelected ? '#ffffff' : style?.color,
+                    boxShadow: isSelected
+                      ? `0 0 14px ${style?.color}88`
+                      : `0 0 6px ${style?.color}22`,
+                  }}
+                  className={`relative overflow-hidden border p-4 transition-all ${
+                    locked
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'cursor-pointer hover:-translate-y-0.5'
+                  }`}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm tracking-[1px]">{card.name}</p>
-                    {count > 0 && (
-                      <span className="text-xs border border-cyan-400 text-cyan-400 px-1">
-                        ×{count}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] tracking-[2px] opacity-60">{card.type.toUpperCase()}</p>
-                  <div className="flex gap-3 mt-2 text-xs">
-                    {card.attack !== undefined && <span>⚔ {card.attack}</span>}
-                    {card.hp     !== undefined && <span>❤ {card.hp}</span>}
-                    {card.heal   !== undefined && <span>💚 {card.heal}</span>}
+                  {/* Illustration en fond + dégradé pour la lisibilité */}
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${artUrl})` }}
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: 'linear-gradient(180deg, rgba(8,8,18,0.5) 0%, rgba(8,8,18,0.2) 40%, rgba(8,8,18,0.85) 100%)' }}
+                  />
+                  {isSelected && (
+                    <div className="absolute inset-0" style={{ background: style?.selBg }} />
+                  )}
+
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-sm tracking-[1px] text-white">{card.name}</p>
+                      {count > 0 && (
+                        <span className="text-xs border border-cyan-400 text-cyan-400 px-1 bg-black/60">
+                          ×{count}
+                        </span>
+                      )}
+                    </div>
+                    <p
+                      className="text-[10px] tracking-[2px]"
+                      style={{ color: style?.color }}
+                    >
+                      {card.type.toUpperCase()}
+                    </p>
+                    <div className="flex gap-3 mt-2 text-xs text-zinc-200">
+                      {card.attack !== undefined && <span>⚔ {card.attack}</span>}
+                      {card.hp     !== undefined && <span>❤ {card.hp}</span>}
+                      {card.heal   !== undefined && <span>💚 {card.heal}</span>}
+                    </div>
                   </div>
                 </div>
               )

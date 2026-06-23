@@ -6,6 +6,7 @@ export const CardType = {
   Implant   : 'implant',
   Overclock : 'overclock',
   Protocole : 'protocole',
+  Assassin : 'assassin',
 } as const;
 
 export type CardType = typeof CardType[keyof typeof CardType];

@@ -15,6 +15,7 @@ export const TYPE_STYLE: Record<CardType, TypeStyle> = {
   [CardType.Implant]:   { color: '#b000ff', selBg: 'rgba(176,0,255,0.12)',  code: 'SPL.IMP' },
   [CardType.Overclock]: { color: '#ff8a00', selBg: 'rgba(255,138,0,0.12)',  code: 'SPL.OVR' },
   [CardType.Protocole]: { color: '#00ffd0', selBg: 'rgba(0,255,208,0.12)',  code: 'SPL.PRT' },
+  [CardType.Assassin]: { color: '#ff00aa', selBg: 'rgba(255,0,170,0.12)', code: 'UNIT.ASN' },
 }
 
 export function getCardStyle(card: CardInstance): TypeStyle {

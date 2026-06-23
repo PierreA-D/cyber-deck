@@ -29,7 +29,7 @@ export function LoginPage() {
       login(token, user)
       navigate({ to: '/dashboard' })
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
+      if (err instanceof Error && err.message === 'Non autorisé') {
         setError('Invalid credentials.')
       } else {
         setError('Connection error. Is the server running?')
