@@ -4,6 +4,7 @@ import { LoginPage }     from './pages/LoginPage'
 import { RegisterPage }  from './pages/RegisterPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { DecksPage }     from './pages/DecksPage'
+import { ShopPage }      from './pages/ShopPage'
 import { GameBoard }     from './components/GameBoard'
 import { NewDeckPage }  from './pages/NewDeckPage'
 import { EditDeckPage } from './pages/EditDeckPage'
@@ -15,6 +16,7 @@ const loginRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/l
 const registerRoute   = createRoute({ getParentRoute: () => rootRoute, path: '/register',  component: RegisterPage })
 const dashboardRoute  = createRoute({ getParentRoute: () => rootRoute, path: '/dashboard', component: DashboardPage })
 const decksRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/decks',     component: DecksPage })
+const shopRoute       = createRoute({ getParentRoute: () => rootRoute, path: '/shop',      component: ShopPage })
 const gameRoute       = createRoute({ getParentRoute: () => rootRoute, path: '/game',      component: GameBoard })
 const newDeckRoute    = createRoute({ getParentRoute: () => rootRoute, path: '/decks/new',  component: NewDeckPage })
 const editDeckRoute   = createRoute({ getParentRoute: () => rootRoute, path: '/decks/$id',  component: EditDeckPage })
@@ -26,6 +28,7 @@ const routeTree = rootRoute.addChildren([
   registerRoute,
   dashboardRoute,
   decksRoute,
+  shopRoute,
   newDeckRoute,
   editDeckRoute,
   gameRoute,

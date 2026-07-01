@@ -68,6 +68,13 @@ export function DashboardPage() {
               >
                 ⬡ DECKS
               </button>
+
+              <button
+                onClick={() => navigate({ to: '/shop' })}
+                className="rounded-md border border-fuchsia-400/80 bg-transparent px-5 py-4 text-sm tracking-[0.25em] text-fuchsia-300 transition duration-200 hover:bg-fuchsia-300 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-fuchsia-300/70 focus:ring-offset-2 focus:ring-offset-slate-950"
+              >
+                ⬢ SHOP
+              </button>
             </div>
           </div>
         </div>
