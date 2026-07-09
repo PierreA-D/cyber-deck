@@ -81,7 +81,7 @@ export function EditDeckPage() {
   const { data: cards = [], isLoading: cardsLoading } = useQuery({
     queryKey: ['cards', color],
     queryFn: async () => {
-      const res = await fetch(`${API}/api/cards`, {
+      const res = await fetch(`${API}/api/me/cards`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error('Failed to fetch cards.')
