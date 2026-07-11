@@ -1,89 +1,82 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
-  type GameState, GamePhase, createGameState, resolveAttack, getAttackTarget, getValidAttackTargets, resolveHeal,
-  endPlayerTurn, endEnemyTurn, cleanupBoard,
+  type MatchState, createMatchState, projectMatch,
+  resolveAttack, getAttackTarget, getValidAttackTargets, resolveHeal,
+  endTurn as advanceTurn, cleanupBoard,
   resolveSpell, resolveAutoTarget, type SpellTarget,
-} from '../engine/GameEngine'
-import { createPlayerState, playSwap, playCardToBoard, playSpellCard } from '../engine/PlayerState'
-import { generateDeck, getLegend, getDeckActive, resolveDeckCard, type Deck, shuffle } from '../engine/CardDatabase'
-import { DeckColor, TargetType } from '../engine/CardEnums'
-import { runAITurn } from '../engine/AIPlayer'
-import { isSpellCard, type CardInstance } from '../engine/CardInstance'
+  createPlayerState, playSwap, playCardToBoard, playSpellCard,
+  generateDeck, getLegend, type Deck, buildPlayerFromActiveDecks,
+  DeckColor, TargetType,
+  runAITurn,
+  isSpellCard, type CardInstance,
+} from '@cyber-deck/engine'
+import { getDeckActive } from '../lib/deckApi'
 import { useAuth } from '../context/useAuth'
+import type { GameDriver } from './gameDriver'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
-function buildGameFromDecks(activeDecks: Deck[]): GameState {
-  if (activeDecks.length < 2) {
-    throw new Error('You need exactly 2 active decks to play.')
-  }
+// Sièges de la partie solo : le joueur humain affronte le bot.
+const HUMAN_ID = 'player'
+const AI_ID    = 'enemy'
 
-  const sourceA = activeDecks[0].cards
-  const sourceB = activeDecks[1].cards
-
-  const isLegend = (c: Deck['cards'][number]) => c.type.toLowerCase() === 'legend'
-
-  const legends = [...sourceA, ...sourceB].filter(isLegend)
-  if (legends.length === 0) throw new Error(`You need exactly 1 legend across your decks.`)
-  if (legends.length > 1) throw new Error(`You can only have 1 legend across your decks.`)
-
-  const deckA = sourceA.filter(c => !isLegend(c)).map(resolveDeckCard)
-  const deckB = sourceB.filter(c => !isLegend(c)).map(resolveDeckCard)
-
-  const playerLegend = resolveDeckCard(legends[0])
-
-  const player = createPlayerState('player', shuffle(deckA), shuffle(deckB), playerLegend)
+function buildMatchFromDecks(activeDecks: Deck[]): MatchState {
+  const player = buildPlayerFromActiveDecks(HUMAN_ID, activeDecks)
   const enemy  = createPlayerState(
-    'enemy',
+    AI_ID,
     generateDeck(DeckColor.Blue),
     generateDeck(DeckColor.Blue),
     getLegend(DeckColor.Blue),
   )
 
-  return createGameState(player, enemy)
+  return createMatchState(
+    { playerId: HUMAN_ID, controller: 'human' }, player,
+    { playerId: AI_ID,    controller: 'ai' },    enemy,
+  )
 }
 
-interface UseGameEngineOptions {
-  onAIAttack?: (attackerId: string, targetId: string) => Promise<void>
-}
-
-export function useGameEngine(options?: UseGameEngineOptions) {
+export function useGameEngine(): GameDriver {
   const { token } = useAuth()
-  const [game,    setGame]    = useState<GameState | null>(null)
+  const [match,   setMatch]   = useState<MatchState | null>(null)
   const [loading, setLoading] = useState(() => !!token)
   const [error,   setError]   = useState<string | null>(null)
+
+  // Vue projetée consommée par l'UI (perspective du joueur humain).
+  const game = useMemo(() => (match ? projectMatch(match, HUMAN_ID) : null), [match])
 
   // Sort en attente d'une cible manuelle (uniquement single_card + manual)
   const [pendingSpell, setPendingSpell] = useState<CardInstance | null>(null)
 
   // Référence toujours à jour vers l'état courant (lecture hors closure).
-  const gameRef = useRef<GameState | null>(null)
-  useEffect(() => { gameRef.current = game }, [game])
+  const matchRef = useRef<MatchState | null>(null)
+  useEffect(() => { matchRef.current = match }, [match])
 
-  // Callback d'animation d'attaque IA, gardé à jour sans recréer les closures.
-  const onAIAttackRef = useRef(options?.onAIAttack)
-  useEffect(() => { onAIAttackRef.current = options?.onAIAttack })
+  // Callback d'animation d'attaque IA, relié par GameBoard via bindAnimator.
+  const onAIAttackRef = useRef<((attackerId: string, targetId: string) => Promise<void>) | undefined>(undefined)
+  const bindAnimator = useCallback((fn: (attackerId: string, targetId: string) => Promise<void>) => {
+    onAIAttackRef.current = fn
+  }, [])
 
   // Empêche de relancer le tour IA tant qu'il est en cours.
   const aiRunningRef = useRef(false)
 
-  const loadActiveGame = useCallback((authToken: string) => {
+  const loadActiveMatch = useCallback((authToken: string) => {
     setLoading(true)
     setError(null)
 
     return getDeckActive(authToken)
-      .then(activeDecks => setGame(buildGameFromDecks(activeDecks)))
+      .then(activeDecks => setMatch(buildMatchFromDecks(activeDecks)))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load active deck.'))
       .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
     if (!token) return
-    queueMicrotask(() => { void loadActiveGame(token) })
-  }, [token, loadActiveGame])
+    queueMicrotask(() => { void loadActiveMatch(token) })
+  }, [token, loadActiveMatch])
 
-  const update = useCallback((fn: (g: GameState) => void) => {
-    setGame(prev => {
+  const update = useCallback((fn: (m: MatchState) => void) => {
+    setMatch(prev => {
       if (!prev) return prev
       const next = structuredClone(prev)
       fn(next)
@@ -92,22 +85,23 @@ export function useGameEngine(options?: UseGameEngineOptions) {
   }, [])
 
   const playCard = useCallback((instanceId: string) => {
-    update(g => { playCardToBoard(g.player, instanceId) })
+    update(m => { playCardToBoard(m.players[HUMAN_ID], instanceId) })
   }, [update])
 
   const swap = useCallback(() => {
-    update(g => { playSwap(g.player) })
+    update(m => { playSwap(m.players[HUMAN_ID]) })
   }, [update])
 
   const heal = useCallback((healerInstanceId: string, targetInstanceId: string) => {
-    update(g => {
-      const healer = g.player.board.find(c => c.instanceId === healerInstanceId)
+    update(m => {
+      const me = m.players[HUMAN_ID]
+      const healer = me.board.find(c => c.instanceId === healerInstanceId)
       if (!healer) return
 
-      const target = [...g.player.board, g.player.legend].find(c => c.instanceId === targetInstanceId)
+      const target = [...me.board, me.legend].find(c => c.instanceId === targetInstanceId)
       if (!target) return
 
-      resolveHeal(healer, target, g)
+      resolveHeal(healer, target, m)
     })
   }, [update])
 
@@ -129,11 +123,11 @@ export function useGameEngine(options?: UseGameEngineOptions) {
     }
 
     // Tout le reste se résout automatiquement (champion, board, single_card auto)
-    update(g => {
-      const resolved = playSpellCard(g.player, instanceId)
+    update(m => {
+      const resolved = playSpellCard(m.players[HUMAN_ID], instanceId)
       if (!resolved) return
-      const target = resolveAutoTarget(effect, 'player', g)
-      if (target) resolveSpell(effect, target, g)
+      const target = resolveAutoTarget(effect, HUMAN_ID, m)
+      if (target) resolveSpell(effect, target, m)
     })
     return false
   }, [game, update])
@@ -142,19 +136,19 @@ export function useGameEngine(options?: UseGameEngineOptions) {
   const resolvePendingSpellTarget = useCallback((targetInstanceId: string) => {
     if (!pendingSpell) return
 
-    update(g => {
+    update(m => {
       const effect = pendingSpell.data.spellEffect
       if (!effect) return
 
-      const allCards = [...g.player.board, ...g.enemy.board]
+      const allCards = [...m.players[HUMAN_ID].board, ...m.players[AI_ID].board]
       const targetCard = allCards.find(c => c.instanceId === targetInstanceId)
       if (!targetCard) return
 
-      const resolved = playSpellCard(g.player, pendingSpell.instanceId)
+      const resolved = playSpellCard(m.players[HUMAN_ID], pendingSpell.instanceId)
       if (!resolved) return
 
       const target: SpellTarget = { kind: 'card', card: targetCard }
-      resolveSpell(effect, target, g)
+      resolveSpell(effect, target, m)
     })
 
     setPendingSpell(null)
@@ -165,22 +159,23 @@ export function useGameEngine(options?: UseGameEngineOptions) {
   }, [])
 
   const attack = useCallback((attackerInstanceId: string, targetInstanceId?: string) => {
-    update(g => {
-      const attacker = g.player.board.find(c => c.instanceId === attackerInstanceId)
+    update(m => {
+      const attacker = m.players[HUMAN_ID].board.find(c => c.instanceId === attackerInstanceId)
       if (!attacker) return
 
+      const enemy = m.players[AI_ID]
       const explicitTarget = targetInstanceId
-        ? [...g.enemy.board, g.enemy.legend].find(c => c.instanceId === targetInstanceId)
+        ? [...enemy.board, enemy.legend].find(c => c.instanceId === targetInstanceId)
         : undefined
 
-      const validTargets = getValidAttackTargets('player', g)
+      const validTargets = getValidAttackTargets(HUMAN_ID, m)
       const target = (explicitTarget && validTargets.includes(explicitTarget))
         ? explicitTarget
-        : getAttackTarget('player', g)
+        : getAttackTarget(HUMAN_ID, m)
       if (!target) return
 
-      resolveAttack(attacker, target, g)
-      cleanupBoard(g.enemy)
+      resolveAttack(attacker, target, m)
+      cleanupBoard(enemy)
     })
   }, [update])
 
@@ -188,8 +183,8 @@ export function useGameEngine(options?: UseGameEngineOptions) {
   // en poussant un snapshot après chaque action pour que le joueur la voie.
   const endTurn = useCallback(() => {
     if (aiRunningRef.current) return
-    const current = gameRef.current
-    if (!current || current.phase !== GamePhase.PlayerTurn) return
+    const current = matchRef.current
+    if (!current || current.activePlayerId !== HUMAN_ID || current.result.status !== 'ongoing') return
 
     aiRunningRef.current = true
     setPendingSpell(null)
@@ -201,21 +196,21 @@ export function useGameEngine(options?: UseGameEngineOptions) {
         // Copie de travail unique : on mute puis on pousse des clones en snapshots.
         const work = structuredClone(current)
 
-        const result = endPlayerTurn(work)
-        setGame(structuredClone(work))
+        const result = advanceTurn(work, HUMAN_ID)
+        setMatch(structuredClone(work))
         if (result.status !== 'ongoing') return
 
         // Laisse voir la fin du tour joueur avant que l'IA agisse.
         await wait(350)
 
-        await runAITurn(work, {
-          commit: () => setGame(structuredClone(work)),
+        await runAITurn(work, AI_ID, {
+          commit: () => setMatch(structuredClone(work)),
           animateAttack: onAIAttackRef.current,
           wait,
         })
 
-        endEnemyTurn(work)
-        setGame(structuredClone(work))
+        advanceTurn(work, AI_ID)
+        setMatch(structuredClone(work))
       } finally {
         aiRunningRef.current = false
       }
@@ -225,8 +220,8 @@ export function useGameEngine(options?: UseGameEngineOptions) {
   const restart = useCallback(() => {
     if (!token) return
     setPendingSpell(null)
-    void loadActiveGame(token)
-  }, [token, loadActiveGame])
+    void loadActiveMatch(token)
+  }, [token, loadActiveMatch])
 
   const saveGame = useCallback(async (result: string, turnsCount: number) => {
     if (!token) return
@@ -248,5 +243,6 @@ export function useGameEngine(options?: UseGameEngineOptions) {
     game, loading, error,
     playCard, swap, heal, attack, endTurn, restart, saveGame,
     playSpell, pendingSpell, resolvePendingSpellTarget, cancelPendingSpell,
+    bindAnimator,
   }
 }

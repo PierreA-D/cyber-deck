@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
-import { type CardInstance } from '../engine/CardInstance'
+import { type CardInstance } from '@cyber-deck/engine'
 import { getCardStyle, getArtUrl } from './cardStyle'
-import { describeSpellEffect } from '../engine/spellDescription'
+import { describeSpellEffect } from '@cyber-deck/engine'
 
 const PREVIEW_W = 250
 

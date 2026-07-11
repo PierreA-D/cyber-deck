@@ -1,8 +1,6 @@
 import type { CardData, SpellEffect } from './CardData'
 import { CardType, DeckColor } from './CardEnums'
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
-
 export interface DeckCard {
   id: number | string
   cardId?: string
@@ -161,15 +159,6 @@ export function generateDeck(color: DeckColor): CardData[] {
     ...repeatToFill(healers,   6),
   ]
   return shuffle(deck)
-}
-
-export async function getDeckActive(token: string): Promise<Deck[]> {
-  const res = await fetch(`${API}/api/decks`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error('Failed to fetch decks.')
-  const data: Deck[] = await res.json()
-  return data.filter(deck => deck.isActive)
 }
 
 function repeatToFill(pool: CardData[], count: number): CardData[] {

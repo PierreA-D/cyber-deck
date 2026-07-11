@@ -1,4 +1,4 @@
-import { type CardInstance } from '../engine/CardInstance'
+import { type CardInstance } from '@cyber-deck/engine'
 import { CardComponent } from './CardComponent'
 import { AnimatePresence } from 'motion/react'
 

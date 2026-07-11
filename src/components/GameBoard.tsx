@@ -1,20 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent, type DragMoveEvent, type DragStartEvent } from '@dnd-kit/core'
-import { useGameEngine } from '../hooks/useGameEngine'
+import type { GameDriver } from '../hooks/gameDriver'
 import { BoardZone } from './BoardZone'
 import { PlayerHand } from './PlayerHand'
 import { CardComponent } from './CardComponent'
-import { GamePhase } from '../engine/GameEngine'
-import { CardType } from '../engine/CardEnums'
-import { isSpellCard, isAlive } from '../engine/CardInstance'
+import { GamePhase } from '@cyber-deck/engine'
+import { CardType } from '@cyber-deck/engine'
+import { isSpellCard, isAlive } from '@cyber-deck/engine'
 import { AnimatePresence } from 'motion/react'
 import { useAttackAnimation } from '../hooks/useAttackAnimation'
 import { DroppableCard } from './DroppableCard'
 import { AttackArrow } from './AttackArrow'
 import { GameOverScreen } from './GameOverScreen'
 
-export function GameBoard() {
+export function GameBoard({ driver }: { driver: GameDriver }) {
   const savedRef = useRef(false)
   const [selectedId,    setSelectedId]    = useState<string | null>(null)
   const [targetId,      setTargetId]      = useState<string | null>(null)
@@ -42,15 +42,18 @@ export function GameBoard() {
     },
   })
 
-  // 2. useGameEngine qui utilise playAttack
+  // 2. Le pilote de jeu (solo ou en ligne) est fourni par la route.
   const {
     game, loading, error, playCard, swap, heal, attack, endTurn, restart, saveGame,
-    playSpell, pendingSpell, resolvePendingSpellTarget, cancelPendingSpell,
-  } = useGameEngine({
-    onAIAttack: async (attackerId, targetId) => {
+    playSpell, pendingSpell, resolvePendingSpellTarget, cancelPendingSpell, bindAnimator,
+  } = driver
+
+  // Relie l'animation d'attaque au pilote (tour IA en solo ; no-op en ligne).
+  useEffect(() => {
+    bindAnimator?.(async (attackerId, targetId) => {
       await playAttack(attackerId, targetId, '#ff0060')
-    },
-  })
+    })
+  }, [bindAnimator, playAttack])
 
   useEffect(() => {
     if (!game) return

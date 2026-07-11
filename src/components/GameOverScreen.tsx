@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
-import type { GameResult } from '../engine/GameEngine'
+import type { GameResult } from '@cyber-deck/engine'
 
 interface GameOverScreenProps {
   result: GameResult

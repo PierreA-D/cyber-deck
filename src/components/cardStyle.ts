@@ -1,5 +1,5 @@
-import { type CardInstance } from '../engine/CardInstance'
-import { CardType } from '../engine/CardEnums'
+import { type CardInstance } from '@cyber-deck/engine'
+import { CardType } from '@cyber-deck/engine'
 
 export interface TypeStyle {
   color: string

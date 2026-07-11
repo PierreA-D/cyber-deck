@@ -1,0 +1,23 @@
+{
+  "name": "@cyber-deck/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@cyber-deck/engine": "*",
+    "dotenv": "^16.4.7",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^24.12.3",
+    "tsx": "^4.19.2",
+    "typescript": "^6.0.3"
+  }
+}

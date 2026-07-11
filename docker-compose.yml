@@ -8,3 +8,21 @@ services:
       - /app/node_modules
     stdin_open: true
     tty: true
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8080}
+      - CLIENT_ORIGIN=${CLIENT_ORIGIN:-http://localhost:5173}
+      - DISCONNECT_GRACE_MS=${DISCONNECT_GRACE_MS:-30000}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true

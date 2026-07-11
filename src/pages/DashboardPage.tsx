@@ -56,7 +56,7 @@ export function DashboardPage() {
 
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => navigate({ to: '/game' })}
+                onClick={() => navigate({ to: '/play' })}
                 className="rounded-md border border-cyan-400/80 bg-transparent px-5 py-4 text-sm tracking-[0.25em] text-cyan-200 transition duration-200 hover:bg-cyan-300 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-cyan-300/70 focus:ring-offset-2 focus:ring-offset-slate-950"
               >
                 ▶ PLAY

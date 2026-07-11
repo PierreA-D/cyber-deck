@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useProtectedRoute } from '../hooks/useProtectedRoute'
-import { resolveDeckCard, type DeckCard } from '../engine/CardDatabase'
+import { resolveDeckCard, type DeckCard } from '@cyber-deck/engine'
 import { BoosterReveal } from '../components/BoosterReveal'
-import type { CardData } from '../engine/CardData'
+import type { CardData } from '@cyber-deck/engine'
 import { useAuth } from '../context/useAuth'
 
 const CREDITS_KEY = 'cyber_credits'

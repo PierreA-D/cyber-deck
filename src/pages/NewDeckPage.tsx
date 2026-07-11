@@ -5,9 +5,9 @@ import { useAuth } from '../context/useAuth'
 import { useProtectedRoute } from '../hooks/useProtectedRoute'
 import { TYPE_STYLE } from '../components/cardStyle'
 import { CardPreview } from '../components/CardPreview'
-import { createCardInstance, type CardInstance } from '../engine/CardInstance'
-import type { CardData } from '../engine/CardData'
-import { CardType, DeckColor } from '../engine/CardEnums'
+import { createCardInstance, type CardInstance } from '@cyber-deck/engine'
+import type { CardData } from '@cyber-deck/engine'
+import { CardType, DeckColor } from '@cyber-deck/engine'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 

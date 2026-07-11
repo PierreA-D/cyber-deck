@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/useAuth'
 import { useProtectedRoute } from '../hooks/useProtectedRoute'
 import { TYPE_STYLE } from '../components/cardStyle'
-import { CardType, DeckColor } from '../engine/CardEnums'
+import { CardType, DeckColor } from '@cyber-deck/engine'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 

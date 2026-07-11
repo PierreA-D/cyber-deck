@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { TYPE_STYLE } from './cardStyle'
-import type { CardData } from '../engine/CardData'
-import { CardType } from '../engine/CardEnums'
-import { describeSpellEffect } from '../engine/spellDescription'
+import type { CardData } from '@cyber-deck/engine'
+import { CardType } from '@cyber-deck/engine'
+import { describeSpellEffect } from '@cyber-deck/engine'
 
 const ACCENT = '#00e5ff'
 const ACCENT_2 = '#ff2d78'

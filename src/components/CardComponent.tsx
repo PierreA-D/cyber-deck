@@ -1,8 +1,8 @@
 import { useDraggable } from '@dnd-kit/core'
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { type CardInstance } from '../engine/CardInstance'
-import { CardType } from '../engine/CardEnums'
+import { type CardInstance } from '@cyber-deck/engine'
+import { CardType } from '@cyber-deck/engine'
 import { getCardStyle, getArtUrl } from './cardStyle'
 import { CardPreview } from './CardPreview'
 

@@ -82,9 +82,17 @@ export function opponentId(state: MatchState, playerId: string): string {
 }
 
 // Projette l'état neutre en une vue orientée « viewerId » pour l'UI.
-// NOTE (multi) : le masquage des zones privées adverses (main, ordre du deck)
-// devra être appliqué ici côté serveur avant l'envoi au client distant.
-export function projectMatch(state: MatchState, viewerId: string): GameState {
+// NOTE (multi) : activer `maskOpponent` côté serveur pour masquer les zones
+// privées adverses (main, ordre du deck) avant l'envoi au client distant.
+export interface ProjectOptions {
+  maskOpponent?: boolean
+}
+
+export function projectMatch(
+  state: MatchState,
+  viewerId: string,
+  opts: ProjectOptions = {},
+): GameState {
   const oppId = opponentId(state, viewerId)
 
   let phase: keyof typeof GamePhase
@@ -92,14 +100,24 @@ export function projectMatch(state: MatchState, viewerId: string): GameState {
   else if (state.activePlayerId === viewerId) phase = GamePhase.PlayerTurn
   else phase = GamePhase.EnemyTurn
 
+  const enemy = opts.maskOpponent
+    ? maskPrivateZones(state.players[oppId])
+    : state.players[oppId]
+
   return {
     player: state.players[viewerId],
-    enemy:  state.players[oppId],
+    enemy,
     phase,
     turn:   state.turn,
     log:    state.log,
     result: projectResult(state.result, viewerId),
   }
+}
+
+// Cache la main et l'ordre des decks de l'adversaire (anti-triche réseau).
+// Copie superficielle : ne mute pas l'état autoritaire.
+function maskPrivateZones(p: PlayerState): PlayerState {
+  return { ...p, hand: [], activeDeck: [], passiveDeck: [] }
 }
 
 function projectResult(result: MatchResult, viewerId: string): GameResult {
