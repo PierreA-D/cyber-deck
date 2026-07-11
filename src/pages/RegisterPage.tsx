@@ -21,7 +21,7 @@ export function RegisterPage() {
         body: JSON.stringify({ username, email, password }),
       })
       navigate({ to: '/login' })
-    } catch (err) {
+    } catch {
       setError('Registration failed. Please try again.')
     } finally {
       setLoading(false)

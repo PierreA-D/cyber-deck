@@ -207,7 +207,9 @@ export function BoosterReveal({ boosterName, code, cost, balance, cards, onClose
 
   // Décryptage terminé + cartes reçues => matérialisation du pack.
   useEffect(() => {
-    if (phase === 'boot' && minBootDone && cards !== null) setPhase('sealed')
+    if (phase !== 'boot' || !minBootDone || cards === null) return
+    const t = setTimeout(() => setPhase('sealed'), 0)
+    return () => clearTimeout(t)
   }, [phase, minBootDone, cards])
 
   // Fin de l'animation glitch d'ouverture => cartes.

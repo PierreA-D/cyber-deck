@@ -20,21 +20,21 @@ const HAND_ANIM = {
   initial:  { opacity: 0, y: 32, scale: 0.88 },
   animate:  { opacity: 1, y: 0,  scale: 1 },
   exit:     { opacity: 0, y: 16, scale: 0.92, transition: { duration: 0.18 } },
-  transition: { type: 'spring', stiffness: 340, damping: 26 },
+  transition: { type: 'spring' as const, stiffness: 340, damping: 26 },
 }
 
 const BOARD_ANIM = {
   initial:  { opacity: 0, scale: 0.78, y: -12 },
   animate:  { opacity: 1, scale: 1,    y: 0 },
   exit:     { opacity: 0, scale: 0.7,  y: 20, filter: 'brightness(3) saturate(0)', transition: { duration: 0.28 } },
-  transition: { type: 'spring', stiffness: 380, damping: 28 },
+  transition: { type: 'spring' as const, stiffness: 380, damping: 28 },
 }
 
 const LEGEND_ANIM = {
   initial:  { opacity: 0, scale: 0.92 },
   animate:  { opacity: 1, scale: 1 },
   exit:     { opacity: 0, scale: 1.1, filter: 'brightness(4) saturate(0)', transition: { duration: 0.4 } },
-  transition: { type: 'spring', stiffness: 260, damping: 22 },
+  transition: { type: 'spring' as const, stiffness: 260, damping: 22 },
 }
 
 function getAnim(animateAs?: 'hand' | 'board' | 'legend') {
@@ -83,10 +83,17 @@ export function CardComponent({ card, draggable, onClick, selected, disabled, an
   useEffect(() => () => clearPreviewTimer(), [])
 
   useEffect(() => {
-    if (isDragging) {
+    if (!isDragging) return
+    // Réinitialisation asynchrone (hors cascade synchrone) au démarrage du drag.
+    const t = setTimeout(() => {
       setCharging(false)
-      hidePreview()
-    }
+      setPreviewRect(null)
+      if (previewTimer.current) {
+        clearTimeout(previewTimer.current)
+        previewTimer.current = null
+      }
+    }, 0)
+    return () => clearTimeout(t)
   }, [isDragging])
 
   const hpPct   = card.data.maxHp ? Math.max(0, card.currentHp / card.data.maxHp) : 1

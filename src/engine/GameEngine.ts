@@ -1,6 +1,6 @@
 import { type PlayerState, isDefeated, endTurn as playerEndTurn } from './PlayerState'
 import { type CardInstance, applyDamage, getEffectiveAttack, isAlive, isLegend } from './CardInstance'
-import { TargetType, TargetSide, TargetMode, TargetRule, EffectType, CardType } from './CardEnums'
+import { TargetType, TargetSide, TargetRule, EffectType, CardType } from './CardEnums'
 import { type SpellEffect } from './CardData'
 
 export const GamePhase = {

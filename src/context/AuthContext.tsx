@@ -66,12 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const expiry = getTokenExpiry(token)
     if (expiry === null) return
     const delay = expiry - Date.now()
-    if (delay <= 0) {
-      logout()
-      return
-    }
     if (delay > MAX_TIMEOUT) return
-    const id = setTimeout(logout, delay)
+    // Déconnexion asynchrone (jamais synchrone dans l'effet), même si déjà expiré.
+    const id = setTimeout(logout, Math.max(0, delay))
     return () => clearTimeout(id)
   }, [token, logout])
 

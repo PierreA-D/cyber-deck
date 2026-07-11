@@ -18,6 +18,7 @@ interface Booster {
   name: string
   cost: number
   code?: string
+  tagline?: string
   extension: object
 }
 
@@ -65,8 +66,8 @@ export function ShopPage() {
   const [pulled, setPulled] = useState<{ booster: Booster; cards: CardData[] | null } | null>(null)
   const [buyingId, setBuyingId] = useState<string | null>(null)
 
-  const [boosters,   setBoosters]   = useState<any>([])
-  const [loading, setLoading] = useState(true)
+  const [boosters,   setBoosters]   = useState<Booster[]>([])
+  const [, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchBoosters() {

@@ -1,19 +1,19 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import gsap from 'gsap'
 
 interface AttackAnimationOptions {
   onArrow?: (from: DOMRect, to: DOMRect, color: string) => void
 }
 
+const nextFrame = () => new Promise<void>(resolve => {
+  requestAnimationFrame(() => resolve())
+})
+
 export function useAttackAnimation(options?: AttackAnimationOptions) {
   const refs      = useRef<Map<string, HTMLElement>>(new Map())
   const onArrowRef = useRef(options?.onArrow)
 
-  const nextFrame = () => new Promise<void>(resolve => {
-    requestAnimationFrame(() => resolve())
-  })
-
-  const resolveElements = async (attackerId: string, targetId: string, tries = 6) => {
+  const resolveElements = useCallback(async (attackerId: string, targetId: string, tries = 6) => {
     for (let i = 0; i < tries; i += 1) {
       const attacker = refs.current.get(attackerId)
       const target = refs.current.get(targetId)
@@ -26,10 +26,10 @@ export function useAttackAnimation(options?: AttackAnimationOptions) {
     }
 
     return null
-  }
+  }, [])
 
   // Met à jour la ref à chaque render sans recréer les callbacks
-  onArrowRef.current = options?.onArrow
+  useEffect(() => { onArrowRef.current = options?.onArrow })
 
   const registerRef = useCallback((instanceId: string, el: HTMLElement | null) => {
     if (el) {
@@ -89,7 +89,7 @@ export function useAttackAnimation(options?: AttackAnimationOptions) {
           ease: 'power2.out',
         }, '-=0.2')
     })
-  }, [])
+  }, [resolveElements])
 
   const playHit = useCallback((targetId: string): Promise<void> => {
     return new Promise(resolve => {

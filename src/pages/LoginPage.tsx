@@ -4,8 +4,6 @@ import { useAuth } from '../context/useAuth'
 import { apiFetch } from '../lib/apiClient'
 import { userSchema, loginResponseSchema } from '../lib/schemas'
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
-
 export function LoginPage() {
   const { login } = useAuth()
   const navigate   = useNavigate()

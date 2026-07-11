@@ -4,8 +4,8 @@ export interface User {
   id: number
   email: string
   username: string
-  totalWins: number
-  winsStreak: number
+  totalWins?: number
+  winsStreak?: number
 }
 
 export interface AuthContextType {

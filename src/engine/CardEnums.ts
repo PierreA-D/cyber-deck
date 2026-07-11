@@ -56,6 +56,7 @@ export type EffectType = typeof EffectType[keyof typeof EffectType];
 export const DeckColor = {
   Red: 'Red',
   Green: 'Green',
+  Blue: 'Blue',
 } as const;
 
 export type DeckColor = typeof DeckColor[keyof typeof DeckColor];

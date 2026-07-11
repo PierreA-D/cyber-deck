@@ -94,7 +94,7 @@ export function GameBoard() {
   const isGameOver   = game.phase === GamePhase.GameOver
 
   function isAttackDrag(instanceId: string) {
-    if (!isPlayerTurn) return false
+    if (!game || !isPlayerTurn) return false
     const unit = game.player.board.find(card => card.instanceId === instanceId)
     return !!unit && !unit.isExhausted
   }
@@ -229,6 +229,7 @@ export function GameBoard() {
 
   // Soigne une cible alliée (unité ou champion) avec le Healer sélectionné.
   function healSelectedTarget(targetInstanceId: string): boolean {
+    if (!game) return false
     if (!selectedId || selectedCard?.data.type !== CardType.Healer) return false
     if (targetInstanceId === selectedId) return false
 
@@ -244,12 +245,12 @@ export function GameBoard() {
   }
 
   function handleAllyLegendClick() {
-    if (!isPlayerTurn) return
+    if (!game || !isPlayerTurn) return
     healSelectedTarget(game.player.legend.instanceId)
   }
 
   function handleBoardClick(instanceId: string) {
-    if (!isPlayerTurn) return
+    if (!game || !isPlayerTurn) return
 
     // Un sort attend une cible — priorité sur la logique d'attaque
     if (pendingSpell) {
