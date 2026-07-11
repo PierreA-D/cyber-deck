@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
-  type GameState, createGameState, resolveAttack, getAttackTarget, getValidAttackTargets, resolveHeal,
+  type GameState, GamePhase, createGameState, resolveAttack, getAttackTarget, getValidAttackTargets, resolveHeal,
   endPlayerTurn, endEnemyTurn, cleanupBoard,
   resolveSpell, resolveAutoTarget, type SpellTarget,
 } from '../engine/GameEngine'
@@ -55,6 +55,17 @@ export function useGameEngine(options?: UseGameEngineOptions) {
 
   // Sort en attente d'une cible manuelle (uniquement single_card + manual)
   const [pendingSpell, setPendingSpell] = useState<CardInstance | null>(null)
+
+  // Référence toujours à jour vers l'état courant (lecture hors closure).
+  const gameRef = useRef<GameState | null>(null)
+  useEffect(() => { gameRef.current = game }, [game])
+
+  // Callback d'animation d'attaque IA, gardé à jour sans recréer les closures.
+  const onAIAttackRef = useRef(options?.onAIAttack)
+  useEffect(() => { onAIAttackRef.current = options?.onAIAttack })
+
+  // Empêche de relancer le tour IA tant qu'il est en cours.
+  const aiRunningRef = useRef(false)
 
   const loadActiveGame = useCallback((authToken: string) => {
     setLoading(true)
@@ -173,14 +184,43 @@ export function useGameEngine(options?: UseGameEngineOptions) {
     })
   }, [update])
 
+  // Termine le tour du joueur puis déroule le tour de l'IA action par action,
+  // en poussant un snapshot après chaque action pour que le joueur la voie.
   const endTurn = useCallback(() => {
-    update(g => {
-      const result = endPlayerTurn(g)
-      if (result.status !== 'ongoing') return
-      runAITurn(g)
-      endEnemyTurn(g)
-    })
-  }, [update])
+    if (aiRunningRef.current) return
+    const current = gameRef.current
+    if (!current || current.phase !== GamePhase.PlayerTurn) return
+
+    aiRunningRef.current = true
+    setPendingSpell(null)
+
+    const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+
+    void (async () => {
+      try {
+        // Copie de travail unique : on mute puis on pousse des clones en snapshots.
+        const work = structuredClone(current)
+
+        const result = endPlayerTurn(work)
+        setGame(structuredClone(work))
+        if (result.status !== 'ongoing') return
+
+        // Laisse voir la fin du tour joueur avant que l'IA agisse.
+        await wait(350)
+
+        await runAITurn(work, {
+          commit: () => setGame(structuredClone(work)),
+          animateAttack: onAIAttackRef.current,
+          wait,
+        })
+
+        endEnemyTurn(work)
+        setGame(structuredClone(work))
+      } finally {
+        aiRunningRef.current = false
+      }
+    })()
+  }, [])
 
   const restart = useCallback(() => {
     if (!token) return

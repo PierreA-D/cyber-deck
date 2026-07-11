@@ -12,6 +12,7 @@ import { AnimatePresence } from 'motion/react'
 import { useAttackAnimation } from '../hooks/useAttackAnimation'
 import { DroppableCard } from './DroppableCard'
 import { AttackArrow } from './AttackArrow'
+import { GameOverScreen } from './GameOverScreen'
 
 export function GameBoard() {
   const savedRef = useRef(false)
@@ -466,18 +467,6 @@ export function GameBoard() {
             [END_TURN]
           </button>
 
-          {isGameOver && (
-            <button
-              onClick={handleRestart}
-              className="cursor-pointer bg-transparent px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#ffe000] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ffe000]/70"
-              style={{
-                border:    '1px solid #ffe000',
-                boxShadow: '0 0 10px rgba(255,224,0,0.3)',
-              }}
-            >
-              [REBOOT_SYS]
-            </button>
-          )}
         </div>
 
         <div className="mt-auto flex flex-col gap-1 border-t border-[#1c1c3a] pt-3 text-[10px] tracking-[1px] text-[#2a2a5a]">
@@ -522,19 +511,6 @@ export function GameBoard() {
           >
             [END_TURN]
           </button>
-
-          {isGameOver && (
-            <button
-              onClick={handleRestart}
-              className="w-full cursor-pointer bg-transparent px-3 py-2.5 text-[11px] uppercase tracking-[0.2em] text-[#ffe000] [clip-path:polygon(6px_0%,100%_0%,calc(100%-6px)_100%,0%_100%)] transition-[filter,transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:brightness-150 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#ffe000]/70"
-              style={{
-                border:    '1px solid #ffe000',
-                boxShadow: '0 0 10px rgba(255,224,0,0.3)',
-              }}
-            >
-              [REBOOT_SYS]
-            </button>
-          )}
         </div>
       </div>
 
@@ -554,6 +530,10 @@ export function GameBoard() {
           toRect={arrowRects.to}
           color={arrowRects.color}
         />
+      )}
+
+      {isGameOver && (
+        <GameOverScreen result={game.result} turn={game.turn} onReplay={handleRestart} />
       )}
 
     </div>

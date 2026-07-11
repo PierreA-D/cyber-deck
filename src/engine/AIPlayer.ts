@@ -1,45 +1,74 @@
 import { type GameState, resolveAttack, resolveHeal, getAttackTarget, cleanupBoard } from './GameEngine'
-import { playCardToBoard } from './PlayerState'
+import { playCardToBoard, isDefeated } from './PlayerState'
 import { CardType } from './CardEnums'
-import { isAlive } from './CardInstance'
+import { isAlive, type CardInstance } from './CardInstance'
+
+// ─── Hooks d'animation du tour IA ─────────────────────────────────────────────
+// Permettent au tour de l'IA de se dérouler visiblement, action par action.
+export interface AITurnHooks {
+  // Pousse l'état courant (muté) vers l'UI pour rendre l'action visible.
+  commit: () => void
+  // Joue l'animation d'attaque entre deux cartes ; se résout à la fin.
+  animateAttack?: (attackerId: string, targetId: string) => Promise<void>
+  // Met le tour en pause pendant `ms` millisecondes.
+  wait: (ms: number) => Promise<void>
+}
+
+// Rythme du tour IA (ms) — laisse au joueur le temps d'observer chaque action.
+const PLAY_DELAY   = 500
+const HEAL_DELAY   = 550
+const ATTACK_DELAY = 250
 
 // ─── AI Turn ──────────────────────────────────────────────────────────────────
-// Exécute un tour complet pour l'IA dans l'ordre :
+// Exécute un tour complet pour l'IA, action par action, dans l'ordre :
 // 1. Jouer les cartes de la main (Defenders > Warriors > Healers)
 // 2. Soigner les unités blessées
 // 3. Attaquer avec toutes les unités disponibles
 
-export function runAITurn(state: GameState): void {
-  playAIHand(state)
-  healAIUnits(state)
-  attackWithAI(state)
+export async function runAITurn(state: GameState, hooks: AITurnHooks): Promise<void> {
+  await playAIHand(state, hooks)
+  await healAIUnits(state, hooks)
+  await attackWithAI(state, hooks)
   cleanupBoard(state.player)
+  hooks.commit()
 }
 
 // ─── 1. Jouer les cartes ──────────────────────────────────────────────────────
 
-function playAIHand(state: GameState): void {
+async function playAIHand(state: GameState, hooks: AITurnHooks): Promise<void> {
   const priority = [CardType.Defender, CardType.Warrior, CardType.Healer]
 
   for (const type of priority) {
-    const cards = state.enemy.hand.filter(c => c.data.type === type)
-    for (const card of cards) {
+    // La main change à chaque carte jouée : on re-sélectionne à chaque tour.
+    let card = state.enemy.hand.find(c => c.data.type === type)
+    while (card) {
       playCardToBoard(state.enemy, card.instanceId)
+      hooks.commit()
+      await hooks.wait(PLAY_DELAY)
+      card = state.enemy.hand.find(c => c.data.type === type)
     }
   }
 }
 
 // ─── 2. Soigner ───────────────────────────────────────────────────────────────
 
-function healAIUnits(state: GameState): void {
-  const healers = state.enemy.board.filter(
+async function healAIUnits(state: GameState, hooks: AITurnHooks): Promise<void> {
+  let healer = findReadyHealer(state)
+  while (healer) {
+    const target = getBestHealTarget(state)
+    if (!target) break
+
+    resolveHeal(healer, target, state)
+    hooks.commit()
+    await hooks.wait(HEAL_DELAY)
+    healer = findReadyHealer(state)
+  }
+}
+
+function findReadyHealer(state: GameState): CardInstance | undefined {
+  return state.enemy.board.find(
     c => c.data.type === CardType.Healer && !c.isExhausted && isAlive(c)
   )
-
-  for (const healer of healers) {
-    const target = getBestHealTarget(state)
-    if (target) resolveHeal(healer, target, state)
-  }
 }
 
 function getBestHealTarget(state: GameState) {
@@ -67,15 +96,36 @@ function getBestHealTarget(state: GameState) {
 
 // ─── 3. Attaquer ──────────────────────────────────────────────────────────────
 
-function attackWithAI(state: GameState): void {
-  const attackers = state.enemy.board.filter(
-    c => !c.isExhausted && isAlive(c) && c.data.type === CardType.Warrior
-  )
+async function attackWithAI(state: GameState, hooks: AITurnHooks): Promise<void> {
+  let attacker = findReadyAttacker(state)
+  while (attacker) {
+    // Le champion adverse est mort : inutile de continuer à frapper.
+    if (isDefeated(state.player)) break
 
-  for (const attacker of attackers) {
     const target = getAttackTarget('enemy', state)
-    if (target) resolveAttack(attacker, target, state)
+    if (!target) {
+      attacker.isExhausted = true
+      attacker = findReadyAttacker(state)
+      continue
+    }
+
+    // Anime l'attaque avant d'appliquer les dégâts, comme pour le joueur.
+    if (hooks.animateAttack) {
+      await hooks.animateAttack(attacker.instanceId, target.instanceId)
+    }
+    resolveAttack(attacker, target, state)
+    cleanupBoard(state.player)
+    hooks.commit()
+    await hooks.wait(ATTACK_DELAY)
+
+    attacker = findReadyAttacker(state)
   }
 
   cleanupBoard(state.player)
+}
+
+function findReadyAttacker(state: GameState): CardInstance | undefined {
+  return state.enemy.board.find(
+    c => !c.isExhausted && isAlive(c) && c.data.type === CardType.Warrior
+  )
 }

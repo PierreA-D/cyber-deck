@@ -315,6 +315,113 @@
   }
 }
 
+@keyframes overlay-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes result-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(38px) scale(0.9);
+    filter: brightness(1.7);
+  }
+
+  55% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes result-glow {
+
+  0%,
+  100% {
+    text-shadow: 0 0 16px currentColor, 0 0 38px currentColor;
+    filter: brightness(1);
+  }
+
+  50% {
+    text-shadow: 0 0 26px currentColor, 0 0 66px currentColor;
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes defeat-glitch {
+
+  0%,
+  100% {
+    text-shadow: 2px 0 #ff0060, -2px 0 #00e5ff;
+    transform: translate(0, 0);
+  }
+
+  20% {
+    text-shadow: -3px 0 #ff0060, 3px 0 #b000ff;
+    transform: translate(2px, 0) skewX(-3deg);
+  }
+
+  40% {
+    text-shadow: 3px 0 #ff3d3d, -3px 0 #00e5ff;
+    transform: translate(-2px, 0);
+  }
+
+  60% {
+    text-shadow: -2px 0 #ff0060, 2px 0 #ff3d3d;
+    transform: translate(1px, 0) skewX(2deg);
+  }
+
+  80% {
+    text-shadow: 2px 0 #b000ff, -2px 0 #ff0060;
+    transform: translate(-1px, 0);
+  }
+}
+
+@keyframes ring-expand {
+  0% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2);
+  }
+}
+
+@keyframes vignette-pulse {
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes stagger-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @layer utilities {
   .glitch {
     animation: glitch 6s infinite;
@@ -370,5 +477,33 @@
 
   .anim-collect-card {
     animation: collect-card 480ms cubic-bezier(0.5, 0, 0.75, 0) forwards;
+  }
+
+  .anim-overlay-in {
+    animation: overlay-in 320ms ease-out both;
+  }
+
+  .anim-result-rise {
+    animation: result-rise 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .anim-result-glow {
+    animation: result-glow 2.4s ease-in-out infinite;
+  }
+
+  .anim-defeat-glitch {
+    animation: defeat-glitch 900ms steps(3, end) infinite;
+  }
+
+  .anim-ring-expand {
+    animation: ring-expand 2.6s ease-out infinite;
+  }
+
+  .anim-vignette {
+    animation: vignette-pulse 3.2s ease-in-out infinite;
+  }
+
+  .anim-stagger-in {
+    animation: stagger-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
